@@ -1,107 +1,163 @@
 <!DOCTYPE html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ナンバーハント Stage11</title>
+<title>ナンバーハント Stage15</title>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:sans-serif}
-#cross{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px;pointer-events:none}
-#cross:before,#cross:after{content:"";position:absolute;background:#fff}
-#cross:before{left:6px;top:0;width:2px;height:14px}
-#cross:after{top:6px;left:0;height:2px;width:14px}
-#hit{position:fixed;left:50%;top:56%;transform:translateX(-50%);color:#f44;font-weight:bold;font-size:22px;opacity:0;transition:opacity .25s;pointer-events:none}
-#log{position:fixed;z-index:10;left:12px;top:max(12px,env(safe-area-inset-top));color:#fff;font-size:12px;line-height:1.4;background:rgba(0,0,0,.55);padding:6px 8px;border-radius:6px;max-width:46vw;max-height:calc(100vh - 24px);overflow:hidden;pointer-events:none}
+:root{--ink:#2b2250;--cream:#fff4dc;--pink:#ff6b9d;--yel:#ffd23f;--teal:#2ec4b6;--org:#ff8a3d}
+html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-weight:700}
+#cross{position:fixed;left:50%;top:50%;width:18px;height:18px;margin:-9px;pointer-events:none;border-radius:50%;border:2px solid var(--cream);box-sizing:border-box;box-shadow:0 0 0 2px var(--ink),inset 0 0 0 2px var(--ink)}
+#cross:before{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:var(--pink)}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;box-shadow:inset 0 0 110px 26px var(--fxc,#fff)}
+#fx.go{animation:fxa .55s ease-out}
+@keyframes fxa{0%{opacity:.7}100%{opacity:0}}
+@keyframes pop{0%{transform:translateX(-50%) scale(.4) rotate(-8deg)}55%{transform:translateX(-50%) scale(1.25) rotate(3deg)}100%{transform:translateX(-50%) scale(1) rotate(0)}}
+@keyframes pop2{0%{transform:scale(.85)}60%{transform:translateX(-8px) scale(1.12)}100%{transform:translateX(-8px) scale(1.04)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes wob{0%,100%{transform:rotate(-1.5deg)}50%{transform:rotate(1.5deg)}}
+@keyframes flow{to{background-position:48px 48px}}
+@keyframes blink{50%{filter:brightness(1.35)}}
+@keyframes fin{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+#hit{position:fixed;left:50%;top:56%;transform:translateX(-50%);font-weight:900;font-size:24px;letter-spacing:1px;opacity:0;transition:opacity .25s;pointer-events:none;background:rgba(43,34,80,.92);padding:4px 16px;border-radius:12px;border:3px solid var(--cream);box-shadow:4px 4px 0 var(--pink)}
+#hit.pop{animation:pop .35s ease-out}
+#log,#ammo,#num,#cnt{color:var(--cream);background:rgba(43,34,80,.9);border:3px solid var(--cream)}
+#log{position:fixed;z-index:10;left:12px;top:max(12px,env(safe-area-inset-top));font-size:12px;line-height:1.4;padding:6px 9px;border-radius:12px;max-width:46vw;max-height:calc(100vh - 24px);overflow:hidden;pointer-events:none;box-shadow:4px 4px 0 var(--teal)}
 #log:empty{display:none}
-#memo{position:fixed;inset:0;background:rgba(255,255,255,.72);display:none;z-index:5}
+#memo{position:fixed;inset:0;background:rgba(255,248,230,.72);display:none;z-index:5}
 #mc{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
-#mt{position:absolute;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;padding:6px 10px;border-radius:8px;font-size:14px;white-space:nowrap}
-#mt button{margin-right:6px;padding:4px 10px;font-size:14px}
-#ammo{position:fixed;right:12px;bottom:max(12px,env(safe-area-inset-bottom));color:#fff;font-size:14px;text-align:left;text-shadow:0 1px 3px #000;pointer-events:none}
-.slot{margin-top:4px;padding:3px 10px;background:rgba(0,0,0,.45);border-radius:6px;border:2px solid transparent}
-.slot.on{border-color:#ffd54a;background:rgba(80,60,0,.7)}
-#num{z-index:6;position:fixed;left:12px;bottom:max(12px,env(safe-area-inset-bottom));color:#fff;font-size:12px;text-shadow:0 1px 3px #000;pointer-events:none}
-.dg{display:inline-block;width:1.2em;text-align:center;border-bottom:2px solid #fff}
-.gs{display:block;width:100%;height:10px;background:rgba(255,255,255,.3);margin-top:4px;border-radius:3px;overflow:hidden}
-.gs i{display:block;height:100%;background:#7fdc7f}
-#cnt{z-index:6;position:fixed;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:#fff;font-size:16px;text-shadow:0 1px 3px #000;pointer-events:none}
-#num,#ammo,#cnt{background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px}
+#mt{position:absolute;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(43,34,80,.92);color:var(--cream);padding:7px 12px;border-radius:14px;font-size:14px;white-space:nowrap;border:3px solid var(--cream);box-shadow:4px 4px 0 var(--pink)}
+#mt button{margin-right:6px;padding:4px 11px;font-size:14px;font-weight:700;font-family:inherit;border-radius:999px;border:2px solid var(--ink);background:var(--yel);color:var(--ink);cursor:pointer}
+#mt button:active{transform:scale(.92)}
+#ammo{position:fixed;right:12px;bottom:max(12px,env(safe-area-inset-bottom));font-size:14px;text-align:left;pointer-events:none;border-radius:14px;box-shadow:4px 4px 0 var(--yel)}
+.slot{margin-top:6px;padding:4px 12px;background:rgba(255,244,220,.12);border-radius:12px;border:2px solid transparent;transition:transform .15s,background .15s}
+.slot.on{border-color:var(--yel);background:rgba(255,210,63,.28);transform:translateX(-8px) scale(1.04);animation:pop2 .25s ease-out}
+#num{z-index:6;position:fixed;left:12px;bottom:max(12px,env(safe-area-inset-bottom));font-size:12px;pointer-events:none;border-radius:14px;box-shadow:4px 4px 0 var(--pink)}
+.dg{display:inline-block;width:1.2em;text-align:center;border-bottom:3px solid var(--pink);font-family:"Courier New",monospace;font-weight:900}
+.gs{display:block;width:100%;height:12px;background:rgba(255,255,255,.22);margin-top:5px;border-radius:999px;overflow:hidden;border:2px solid var(--cream);box-sizing:border-box}
+.gs i{display:block;height:100%;border-radius:999px;transition:width .2s}
+.gs.full i{animation:blink 1s infinite}
+#cnt{z-index:6;position:fixed;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);font-size:16px;pointer-events:none;border-radius:999px;box-shadow:4px 4px 0 var(--org)}
+#num,#ammo,#cnt{padding:7px 12px}
 #ammo:empty{display:none}
-#num{width:300px}
-#mm{position:fixed;right:12px;top:max(12px,env(safe-area-inset-top));z-index:6;background:rgba(0,0,0,.6);border-radius:50%}
-#hit{background:rgba(0,0,0,.6);padding:4px 14px;border-radius:8px}
-#home{position:fixed;inset:0;z-index:30;background:linear-gradient(#1b2433,#0a0e15);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;box-sizing:border-box;text-align:center}
-#home h1{margin:0;font-size:44px;letter-spacing:4px}
-#home button{display:block;width:240px;margin:10px auto;padding:12px;font-size:18px;border-radius:10px;border:2px solid #fff;background:#223;color:#fff;cursor:pointer}
-#home button:hover{background:#345}
-#hpanel{display:none;max-width:660px;line-height:1.8;font-size:15px;text-align:left;background:rgba(255,255,255,.08);padding:14px 18px;border-radius:10px}
-#msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(0,0,0,.6);color:#fff;font-size:18px;line-height:1.9;cursor:pointer}
+#num{width:300px;box-sizing:content-box}
+#mm{position:fixed;right:12px;top:max(12px,env(safe-area-inset-top));z-index:6;background:rgba(43,34,80,.7);border-radius:50%;border:3px solid var(--cream);box-shadow:4px 4px 0 var(--teal)}
+#home{position:fixed;inset:0;z-index:30;color:var(--ink);overflow:hidden;background:var(--cream) radial-gradient(circle,rgba(43,34,80,.13) 3px,transparent 3.5px) 0 0/24px 24px;animation:flow 6s linear infinite;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;box-sizing:border-box;text-align:center}
+#hmain,#hpanel{position:relative;z-index:1}
+#home h1{margin:0 0 6px;font-size:clamp(34px,8vw,64px);letter-spacing:2px;font-weight:900;color:var(--ink);text-shadow:3px 3px 0 var(--pink),6px 6px 0 var(--teal)}
+#home h1 span{display:inline-block;animation:bob 1.6s ease-in-out infinite;animation-delay:calc(var(--i)*.12s)}
+#home p{font-size:16px;margin:4px 0 18px}
+#home button{display:block;width:250px;margin:14px auto;padding:12px;font-size:20px;font-weight:900;font-family:inherit;border-radius:16px;border:4px solid var(--ink);background:var(--yel);color:var(--ink);cursor:pointer;box-shadow:5px 5px 0 var(--ink);transition:transform .12s,box-shadow .12s,background .12s}
+#home button:nth-of-type(2){background:var(--teal)}
+#home button:nth-of-type(3){background:var(--pink)}
+#home button:hover{transform:translate(-2px,-2px) rotate(-2deg);box-shadow:7px 7px 0 var(--ink)}
+#home button:active{transform:translate(4px,4px);box-shadow:1px 1px 0 var(--ink)}
+.deco{position:absolute;z-index:0;pointer-events:none;border:4px solid var(--ink);animation:bob 3.2s ease-in-out infinite}
+.d1{left:8%;top:14%;width:64px;height:64px;border-radius:50%;background:var(--pink)}
+.d2{right:10%;top:18%;width:56px;height:56px;background:var(--teal);animation-name:wob;animation-duration:2.4s;transform:rotate(12deg)}
+.d3{left:14%;bottom:16%;width:0;height:0;border:none;border-left:34px solid transparent;border-right:34px solid transparent;border-bottom:60px solid var(--org);filter:drop-shadow(0 0 0 var(--ink))}
+.d4{right:12%;bottom:14%;width:70px;height:70px;border-radius:50%;background:var(--yel);animation-delay:.8s}
+#hpanel{display:none;max-width:660px;line-height:1.8;font-size:15px;text-align:left;background:#fff;color:var(--ink);padding:14px 20px;border-radius:18px;border:4px solid var(--ink);box-shadow:6px 6px 0 var(--pink);animation:fin .25s ease-out}
+#hpanel input[type=range]{accent-color:var(--pink)}
+#msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(43,34,80,.78);color:var(--cream);font-size:22px;font-weight:900;line-height:1.9;cursor:pointer;text-shadow:3px 3px 0 var(--pink);animation:fin .25s ease-out}
+#hback{margin-top:16px;padding:8px 22px;font-size:17px;font-weight:900;font-family:inherit;border-radius:14px;border:3px solid var(--ink);background:var(--yel);color:var(--ink);cursor:pointer;box-shadow:4px 4px 0 var(--ink);text-shadow:none}
+#hback:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+#home button:nth-of-type(4){background:var(--org)}
+#hpanel button.tg{display:inline-block;width:auto;margin:4px 4px;padding:6px 14px;font-size:15px;border-width:3px;border-radius:12px;box-shadow:3px 3px 0 var(--ink);background:#e6e2f0}
+#hpanel button.tg.on{background:var(--teal)}
+#hpanel .rw{margin:8px 0}
 </style></head><body>
-<div id="cross"></div><div id="hit">HIT!</div><div id="log"></div><div id="ammo"></div><div id="num"></div><div id="cnt"></div><canvas id="mm" width="180" height="180"></canvas>
+<div id="cross"></div><div id="fx"></div><div id="hit">HIT!</div><div id="log"></div><div id="ammo"></div><div id="num"></div><div id="cnt"></div><canvas id="mm" width="180" height="180"></canvas>
 <div id="memo"><canvas id="mc"></canvas><div id="mt"><button data-c="#111">黒</button><button data-c="#d22">赤</button><button data-c="#26c">青</button><button data-c="eraser">消しゴム</button><button data-c="clear">全消し</button>　<span id="mpg"></span>　Tab：相手切替　Mで閉じる</div></div>
-<div id="msg" style="display:none">一時停止<br>クリックで再開</div>
+<div id="msg" style="display:none"><div>一時停止<br>クリックで再開<br><button id="hback">ホーム画面に戻る</button></div></div>
 <div id="home">
-  <div id="hmain"><h1>ナンバーハント</h1><p>背中の3桁を読み取れ。誰かの数字を当てれば脱落。</p>
-    <button id="hs">スタート</button><button id="hh">遊び方</button><button id="hc">設定</button></div>
+  <i class="deco d1"></i><i class="deco d2" style="animation-delay:.4s"></i><i class="deco d3" style="animation-delay:1.1s"></i><i class="deco d4"></i>
+  <div id="hmain"><h1><span style="--i:0">ナ</span><span style="--i:1">ン</span><span style="--i:2">バ</span><span style="--i:3">ー</span><span style="--i:4">ハ</span><span style="--i:5">ン</span><span style="--i:6">ト</span></h1><p>背中の3桁を読み取れ。誰かの数字を当てれば脱落。</p>
+    <button id="hs">スタート</button><button id="hr">対戦設定</button><button id="hh">遊び方</button><button id="hc">設定</button></div>
   <div id="hpanel"></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// ===== 対戦設定（この端末に保存。オンラインではホストの設定を全員に送る想定）=====
+const CFG=(()=>{
+  const c={num:true,warp:true,ch:[true,true,true],map:90,bots:3};
+  try{const s=JSON.parse(localStorage.getItem('nh_cfg')||'{}');
+    if(typeof s.num==='boolean')c.num=s.num;
+    if(typeof s.warp==='boolean')c.warp=s.warp;
+    if(Array.isArray(s.ch)&&s.ch.length===3&&s.ch.some(Boolean))c.ch=s.ch.map(Boolean);
+    if([90,120,150].includes(s.map))c.map=s.map;
+    if([1,2,3].includes(s.bots))c.bots=s.bots;
+  }catch(e){}
+  return c;
+})();
+const saveCfg=()=>{try{localStorage.setItem('nh_cfg',JSON.stringify(CFG));return true}catch(e){return false}};
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x9ec9f0);
-scene.fog=new THREE.Fog(0x9ec9f0,15,48);
+scene.background=new THREE.Color(0xa8e0ff);
+scene.fog=new THREE.Fog(0xa8e0ff,15,48);
 const cam=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,300);
 cam.rotation.order='YXZ';
 const rd=new THREE.WebGLRenderer({antialias:true});
 rd.setSize(innerWidth,innerHeight);
 document.body.appendChild(rd.domElement);
-scene.add(new THREE.HemisphereLight(0xffffff,0x556655,0.9));
-const sun=new THREE.DirectionalLight(0xffffff,0.6);
+scene.add(new THREE.HemisphereLight(0xfff2e0,0x7a8fb0,0.78));
+const sun=new THREE.DirectionalLight(0xfff0d0,0.95);
 sun.position.set(30,50,20);scene.add(sun);
+// アニメ調：3段階のトゥーンシェーディング＋輪郭線
+const TG=new THREE.DataTexture(new Uint8Array([85,160,255]),3,1,THREE.LuminanceFormat);
+TG.minFilter=TG.magFilter=THREE.NearestFilter;TG.generateMipmaps=false;TG.needsUpdate=true;
+const toonMat=o=>new THREE.MeshToonMaterial(Object.assign({gradientMap:TG},o));
+const OLM=new THREE.LineBasicMaterial({color:0x2b2250});
 
-const S=90,H=S/2,wd=v=>v-S*Math.round(v/S); // 世界は端がつながっている（円環）
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshLambertMaterial({color:0x6a9a5a}));
+const S=CFG.map,H=S/2,MS2=(S/90)**2,wd=v=>v-S*Math.round(v/S); // 世界は端がつながっている（円環）
+const QC=[['#86d17a','#a0d673'],['#74cfa0','#86c6cc']]; // [z偶奇][x偶奇]。floor(座標/45)の偶奇で4エリア
+const groundTex=(()=>{
+  const c=document.createElement('canvas');c.width=c.height=2;const g=c.getContext('2d');
+  for(let cy=0;cy<2;cy++)for(let cx=0;cx<2;cx++){g.fillStyle=QC[1-cy][1-cx];g.fillRect(cx,cy,1,1)}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(400/S,400/S);
+  t.magFilter=t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;return t;
+})();
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),toonMat({color:0xffffff,map:groundTex}));
 ground.rotation.x=-Math.PI/2;scene.add(ground);
-const grid=new THREE.GridHelper(100,50,0x557744,0x557744);
+const grid=new THREE.GridHelper(100,50,0x6fbf6a,0x6fbf6a);
 grid.position.y=0.02;scene.add(grid);
 
 const boxes=[],targets=[],bm=[];
 function addBox(x,z,w,d,h,color){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color}));
-  m.position.set(x,h/2,z);m.userData.bx=x;m.userData.bz=z;scene.add(m);targets.push(m);bm.push(m);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),toonMat({color}));
+  m.position.set(x,h/2,z);m.userData.bx=x;m.userData.bz=z;scene.add(m);m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),OLM));targets.push(m);bm.push(m);
   boxes.push({cx:x,cz:z,hx:w/2,hz:d/2,maxY:h});
 }
 // 階段と高台（0.3mずつ歩いて上れる）
 const SX=14,SZ=-10;
-for(let i=0;i<8;i++)addBox(SX+i+0.5,SZ,1,3,0.3*(i+1),0xcfc3a0);
-addBox(SX+11,SZ,6,6,2.4,0xb8a888);
+for(let i=0;i<8;i++)addBox(SX+i+0.5,SZ,1,3,0.3*(i+1),0xffe3a3);
+addBox(SX+11,SZ,6,6,2.4,0xffd08a);
 // ジャンプで乗れる低い箱
-addBox(-6,-6,2,2,1.0,0xd09050);addBox(-9,-6,2,2,1.3,0xd09050);
+addBox(-6,-6,2,2,1.0,0xff9f5a);addBox(-9,-6,2,2,1.3,0xff9f5a);
 // 登れる建物：階段で2階（3.6m）、ブロックを飛び移って3階（7.2m）
 const TW=[[-26,26],[28,30],[-30,-28]];
 function tower(cx,cz){
-  addBox(cx,cz,14,14,3.6,0xb9b2a0);
-  for(let i=0;i<12;i++)addBox(cx,cz-19+i+0.5,3,1,0.3*(i+1),0xcfc3a0);
-  addBox(cx+4,cz+4,6,6,7.2,0x9c9585);
-  addBox(cx-2,cz+2,2,2,4.8,0xd09050);addBox(cx,cz+2,2,2,6.0,0xd09050);
+  addBox(cx,cz,14,14,3.6,0xf2b8d0);
+  for(let i=0;i<12;i++)addBox(cx,cz-19+i+0.5,3,1,0.3*(i+1),0xffe3a3);
+  addBox(cx+4,cz+4,6,6,7.2,0xb9a6ff);
+  addBox(cx-2,cz+2,2,2,4.8,0xff9f5a);addBox(cx,cz+2,2,2,6.0,0xff9f5a);
 }
 TW.forEach(t=>tower(t[0],t[1]));
 const HI=[]; // 高所の宝箱スポット [x,z,高さ]
 TW.forEach(([cx,cz])=>HI.push([cx-4,cz-4,3.6],[cx+4,cz-4,3.6],[cx-4,cz+5,3.6],[cx+4,cz+4,7.2]));
 HI.push([SX+11,SZ,2.4],[8+3*2.6,26,4.8],[-18-3*2.6,-10,4.8]);
 // 二段ジャンプで登れるブロックの列（1.2mずつ高くなる）
-[[8,26,1],[-18,-10,-1]].forEach(([x,z,dir])=>{for(let i=0;i<4;i++)addBox(x+dir*i*2.6,z,2,2,1.2*(i+1),0xd09050)});
+[[8,26,1],[-18,-10,-1]].forEach(([x,z,dir])=>{for(let i=0;i<4;i++)addBox(x+dir*i*2.6,z,2,2,1.2*(i+1),0xff9f5a)});
 const KEEP=[[SX+7,SZ,10],[13,26,12],[-22,-10,12],...TW.map(t=>[t[0],t[1]-6,20])];
 // 長い壁と建物（固定シード）
 let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
-const cols=[0xc9b896,0xaaaaaa,0xb07a6a,0x8899aa,0xd8d0c0];
+const cols=[0xffcf6b,0x7fe0d0,0xff8fa3,0x9cb8ff,0xfff0c8];
 const bad=(x,z,w,d)=>Math.hypot(x,z)<Math.max(w,d)/2+8||KEEP.some(k=>Math.hypot(x-k[0],z-k[1])<Math.max(w,d)/2+k[2]);
-for(let i=0;i<20;i++){
+for(let i=0;i<Math.round(20*MS2);i++){
   const len=18+rnd()*22,horiz=rnd()<0.5,h=5+rnd()*3;
   const w=horiz?len:1.5,d=horiz?1.5:len;
   const x=(rnd()-0.5)*S,z=(rnd()-0.5)*S;
   if(bad(x,z,w,d))continue;
-  addBox(x,z,w,d,h,0x8a8a92);
+  addBox(x,z,w,d,h,0x7f8cff);
 }
-for(let i=0;i<60;i++){
+for(let i=0;i<Math.round(60*MS2);i++){
   const big=rnd()<0.5,tall=rnd()<0.4;
   const w=big?5+rnd()*9:1.5+rnd()*2,d=big?5+rnd()*9:1.5+rnd()*2;
   const h=big?(tall?9+rnd()*8:4+rnd()*5):1.2+rnd()*1.5;
@@ -111,6 +167,67 @@ for(let i=0;i<60;i++){
   addBox(x,z,w,d,h,c);
 }
 
+// ===== 動く壁と上下する床（エレベーター）=====
+// 床（黄）：柱の上面が上下する。乗ると一緒に動く。壁（ピンク）：左右にスライド。はさまれたら押し出される
+const dyn=[],dynSw=[];
+const ovl=(x,z,hx,hz,m)=>boxes.some(b=>Math.abs(wd(x-b.cx))<b.hx+hx+m&&Math.abs(wd(z-b.cz))<b.hz+hz+m)||dynSw.some(s=>Math.abs(wd(x-s[0]))<s[2]+hx+m&&Math.abs(wd(z-s[1]))<s[3]+hz+m);
+// 追加の壁：数字を読まれにくくする遮蔽物。通路が2m以上残るよう間隔をあける
+let seed2=31;const rnd2=()=>(seed2=(seed2*16807)%2147483647)/2147483647;
+for(let n=0,k=0;n<2500*MS2&&k<Math.round(18*MS2);n++){
+  const horiz=rnd2()<0.5,len=8+rnd2()*12,h=4.5+rnd2()*2.5;
+  const w=horiz?len:1.5,d=horiz?1.5:len,x=(rnd2()-0.5)*S,z=(rnd2()-0.5)*S;
+  if(bad(x,z,w,d)||ovl(x,z,w/2,d/2,2.2)||[[5,-25],[-35,5],[25,-10]].some(q=>Math.hypot(wd(x-q[0]),wd(z-q[1]))<9))continue;
+  addBox(x,z,w,d,h,0x7f8cff);k++;
+}
+function addDyn(o){
+  addBox(o.x,o.z,o.w,o.d,o.h,o.color);
+  o.m=bm[bm.length-1];o.b=boxes[boxes.length-1];o.x0=o.x;o.z0=o.z;
+  o.b.dyn=o.kind==='lift'?'#ffd23f':'#ff4d8d';
+  dynSw.push([o.x,o.z,o.w/2+(o.ax==='x'?o.amp:0),o.d/2+(o.ax==='z'?o.amp:0)]);
+  dyn.push(o);return o;
+}
+const LIFT_LO=0.3;
+// エレベーター：塔の東側にくっつける。3.6m＝2階、7.2m＝3階の高さまで上がる
+[[TW[0],[[-3,3.6],[4,7.2]]],[TW[1],[[4,7.2]]],[TW[2],[[-3,3.6],[4,7.2]]]].forEach(([t,ls],ti)=>ls.forEach(([dz,hi],li)=>{
+  const o=addDyn({kind:'lift',x:t[0]+9,z:t[1]+dz,w:4,d:4,h:hi,color:0xffd23f,lo:LIFT_LO,per:hi>5?20:14,ph:(ti*2+li)*1.7});
+  o.b.maxY=LIFT_LO;o.m.scale.y=LIFT_LO/hi;o.m.position.y=LIFT_LO/2;
+}));
+// 動く壁：空いている場所を固定シードで探して置く
+[[1.5,10,'x',8,14],[10,1.5,'z',8,16],[1.5,12,'x',7,18]].forEach(([w,d,ax,amp,per],i)=>{
+  const swx=w/2+(ax==='x'?amp:0),swz=d/2+(ax==='z'?amp:0);
+  for(let n=0;n<600;n++){
+    const x=(rnd()-0.5)*(S-14),z=(rnd()-0.5)*(S-14);
+    if(Math.hypot(x,z)<14||[[5,-25],[-35,5],[25,-10]].some(q=>Math.hypot(wd(x-q[0]),wd(z-q[1]))<10))continue;
+    if(ovl(x,z,swx,swz,2))continue;
+    addDyn({kind:'wall',x,z,w,d,h:5,color:0xff4d8d,ax,amp,per,ph:i*2.1});break;
+  }
+});
+function pushOut(e,y,r,b,mx,mz){ // 壁や床にめり込んだら押し出す／上に乗っていたら一緒に運ぶ
+  const ox=b.hx+r-Math.abs(wd(e.x-b.cx)),oz=b.hz+r-Math.abs(wd(e.z-b.cz));
+  if(ox<=0||oz<=0)return;
+  if(y>=b.maxY-0.4){if(y<=b.maxY+0.6){e.x=wd(e.x+mx);e.z=wd(e.z+mz)}return}
+  if(ox<oz)e.x=wd(e.x+(Math.sign(wd(e.x-b.cx))||1)*ox);else e.z=wd(e.z+(Math.sign(wd(e.z-b.cz))||1)*oz);
+}
+function updateDyn(tm){
+  for(const o of dyn){
+    const b=o.b,m=o.m,px=b.cx,pz=b.cz,w=6.2832*tm/o.per+o.ph;
+    if(o.kind==='lift'){
+      const u=Math.max(0,Math.min(1,(0.5-0.5*Math.cos(w)-0.15)/0.7)),top=o.lo+(o.h-o.lo)*u;
+      b.maxY=top;m.scale.y=top/o.h;m.position.y=top/2;
+    }else{
+      const v=o.amp*Math.sin(w);
+      if(o.ax==='x')b.cx=wd(o.x0+v);else b.cz=wd(o.z0+v);
+      m.userData.bx=b.cx;m.userData.bz=b.cz;
+    }
+    const mx=wd(b.cx-px),mz=wd(b.cz-pz);
+    pushOut(p,p.y,R,b,mx,mz);
+    if(hit(p.x,p.z,p.y,R)){const r=rpos(8);p.x=r[0];p.z=r[1];p.y=0;p.vy=0}
+    for(const q of bots)if(q.st==='alive'){
+      pushOut(q,0,0.5,b,mx,mz);
+      if(hit(q.x,q.z,0,0.5)){const r=rpos(8);q.x=r[0];q.z=r[1]}
+    }
+  }
+}
 // 当たり判定：yは足元の高さ。0.4mまでの段差は歩いて上れる（浮動小数点の誤差対策で余裕を持たせる）
 function hit(x,z,y,r){
   for(const b of boxes)if(b.maxY>y+0.4&&Math.abs(wd(x-b.cx))<b.hx+r&&Math.abs(wd(z-b.cz))<b.hz+r)return true;
@@ -124,7 +241,7 @@ function floorAt(x,z,y,r){
 
 // 到達可能マス（宝箱・ボットの出現位置用。壁で囲まれた場所には出さない）
 const G=S,open=new Uint8Array(G*G),cx=i=>i-H+0.5;
-for(let i=0;i<G;i++)for(let j=0;j<G;j++)open[i*G+j]=hit(cx(i),cx(j),0,0.5)?0:1;
+for(let i=0;i<G;i++)for(let j=0;j<G;j++)open[i*G+j]=hit(cx(i),cx(j),0,0.5)||dynSw.some(s=>Math.abs(wd(cx(i)-s[0]))<s[2]+1&&Math.abs(wd(cx(j)-s[1]))<s[3]+1)?0:1;
 const seen=new Uint8Array(G*G),q=[H*G+H],reach=[];seen[H*G+H]=1;
 while(q.length){
   const c=q.pop(),i=(c/G)|0,j=c%G;reach.push([cx(i),cx(j)]);
@@ -146,21 +263,24 @@ function mkPlate(n){
 }
 const used=new Set();
 function uniq(){let n;do{n=String(Math.floor(Math.random()*1000)).padStart(3,'0')}while(used.has(n));used.add(n);return n}
-const myNum=uniq(),INV=5,GONE=2,TURN=1.75,INVP=6,SPD=8,FRZ=4,TRR=2.5,WALK=8,AIR=1,BSPD=4.5,XRAYT=8,RADART=10,CLOAKT=6,SPAWNT=5,STEPT=0.12,STEPV=50,STEPCD=3;
-const bots=[],palette=[0xe67e22,0x9b59b6,0x2ecc71],BN=['オレンジ','紫','緑'];
+const myNum=uniq(),INV=5,GONE=2,TURN=1.75,INVP=6,SPD=8,FRZ=4,TRR=2.5,WALK=8,AIR=1,BSPD=8,XRAYT=8,RADART=10,CLOAKT=6,SPAWNT=15,STEPT=0.12,STEPV=50,STEPCD=3;
+const REACT=0.8,WGRACE=1.2,MISS=1/3,BGUESS=6;let warpAt=0; // 気づくまでの秒数／ワープ後に撃たない秒数／外す確率／判定に踏み切る候補数
+const bots=[],palette=[0xff8a3d,0xb06cff,0x37d67a],BN=['オレンジ','紫','緑'];
 const newK=()=>({par:[null,null,null],lo:[0,0,0],hi:[9,9,9],sp:null,slo:0,shi:27,m3:null,dup:null,ev:null,pc:null,mm:null,mxlo:0,mxhi:9,mnlo:0,mnhi:9,has:{},dl:{},dx:{},sm:{},cmp:{}});
 const ALL=[...Array(1000).keys()].map(i=>String(i).padStart(3,'0'));
 function newTarget(b){let r;for(let n=0;n<30;n++){r=rpos();if(Math.hypot(wd(r[0]-b.x),wd(r[1]-b.z))<25)break}b.tx=r[0];b.tz=r[1];b.t=0}
 for(let i=0;i<3;i++){
   const num=uniq();
-  const mat=new THREE.MeshLambertMaterial({color:palette[i],transparent:true});
+  const mat=toonMat({color:palette[i],transparent:true});
   const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.4,0.4),mat);body.position.y=0.7;
   const head=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10),mat);head.position.y=1.62;
   const plate=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.35),new THREE.MeshBasicMaterial({map:mkPlate(num)}));
   plate.position.set(0,1.0,-0.21);plate.rotation.y=Math.PI;
-  g.add(body,head,plate);scene.add(g);
-  const b={g,mat,plate,st:'alive',inv:0,gone:0,frz:0,blind:0,K:newK(),num,name:BN[i],color:palette[i],x:0,z:0,flash:0,tx:0,tz:0,t:0,yaw:0,gauge:0,cand:{},ammo:[],path:[],pt:0,fcd:0,ait:6,fv:null};
+  body.add(new THREE.LineSegments(new THREE.EdgesGeometry(body.geometry),OLM));
+  const sh=new THREE.Mesh(new THREE.CircleGeometry(0.55,16),new THREE.MeshBasicMaterial({color:0x2b2250,transparent:true,opacity:0.28}));sh.rotation.x=-Math.PI/2;sh.position.y=0.03;
+  g.add(body,head,plate,sh);scene.add(g);
+  const b={g,mat,plate,st:'alive',inv:0,gone:0,frz:0,blind:0,K:newK(),num,name:BN[i],color:palette[i],x:0,z:0,flash:0,tx:0,tz:0,t:0,yaw:0,gauge:0,cand:{},ammo:[],path:[],pt:0,fcd:0,ait:6,fv:null,rt:{}};
   [body,head,plate].forEach(m=>{m.userData.bot=b;targets.push(m)});
   {const r=rpos(10);b.x=r[0];b.z=r[1]}
   newTarget(b);bots.push(b);
@@ -172,23 +292,24 @@ const pair=()=>{const a=rk();let b;do{b=rk()}while(b===a);return a<b?[a,b]:[b,a]
 const L3='ABC',pk=q=>q.p[0]+''+q.p[1],pn=q=>L3[q.p[0]]+'と'+L3[q.p[1]],sg=x=>x>0?1:x<0?-1:0,PR=[2,3,5,7];
 const bnd=(lo,hi,a,n)=>a?[Math.max(lo,n),hi]:[lo,Math.min(hi,n-1)];
 function lim(K,k,a,n){const b=bnd(K.lo[k],K.hi[k],a,n);K.lo[k]=b[0];K.hi[k]=b[1]}
+const NG=n=>'<span style="color:#3ddc84">'+n+'</span>';
 const HT=[
  {w:10,mk:()=>({}),ans:d=>d.map(x=>x%2).join(''),ap:(K,a)=>{[...a].forEach((c,i)=>{K.par[i]=+c})},lab:()=>'各桁の偶奇'},
  {w:5,mk:()=>({k:rk()}),ans:(d,q)=>d[q.k]%2,ap:(K,a,q)=>{K.par[q.k]=a},lab:q=>L3[q.k]+'の偶奇'},
- {w:10,nr:[1,9],mk:()=>({k:rk(),n:rn(3,7)}),ans:(d,q)=>d[q.k]>=q.n,ap:(K,a,q)=>lim(K,q.k,a,q.n),lab:q=>L3[q.k]+'は'+q.n+'以上か'},
+ {w:10,nr:[1,9],mk:()=>({k:rk(),n:rn(3,7)}),ans:(d,q)=>d[q.k]>=q.n,ap:(K,a,q)=>lim(K,q.k,a,q.n),lab:q=>L3[q.k]+'は'+NG(q.n)+'以上か'},
  {w:10,mk:()=>({}),ans:d=>d.map(x=>x>=5?1:0).join(''),ap:(K,a)=>{[...a].forEach((c,i)=>lim(K,i,c==='1',5))},lab:()=>'HIGH or LOW（A・B・C）'},
  {w:3,mk:()=>({}),ans:d=>(d[0]+d[1]+d[2])%2,ap:(K,a)=>{K.sp=a},lab:()=>'A+B+Cの偶奇'},
- {w:8,nr:[1,27],mk:()=>({n:rn(11,16)}),ans:(d,q)=>d[0]+d[1]+d[2]>=q.n,ap:(K,a,q)=>{const b=bnd(K.slo,K.shi,a,q.n);K.slo=b[0];K.shi=b[1]},lab:q=>'A+B+Cは'+q.n+'以上か'},
+ {w:8,nr:[1,27],mk:()=>({n:rn(11,16)}),ans:(d,q)=>d[0]+d[1]+d[2]>=q.n,ap:(K,a,q)=>{const b=bnd(K.slo,K.shi,a,q.n);K.slo=b[0];K.shi=b[1]},lab:q=>'A+B+Cは'+NG(q.n)+'以上か'},
  {w:2,mk:()=>({}),ans:d=>new Set(d).size<3,ap:(K,a)=>{K.dup=a},lab:()=>'同じ数字の有無'},
- {w:6,nr:[1,9],mk:()=>({p:pair(),n:rn(2,4)}),ans:(d,q)=>Math.abs(d[q.p[0]]-d[q.p[1]])>=q.n,ap:(K,a,q)=>{const o=K.dl[pk(q)]||[0,9];K.dl[pk(q)]=bnd(o[0],o[1],a,q.n)},lab:q=>pn(q)+'の差は'+q.n+'以上か'},
+ {w:6,nr:[1,9],mk:()=>({p:pair(),n:rn(2,4)}),ans:(d,q)=>Math.abs(d[q.p[0]]-d[q.p[1]])>=q.n,ap:(K,a,q)=>{const o=K.dl[pk(q)]||[0,9];K.dl[pk(q)]=bnd(o[0],o[1],a,q.n)},lab:q=>pn(q)+'の差は'+NG(q.n)+'以上か'},
  {w:8,mk:()=>({}),ans:d=>d.filter(x=>x%2===0).length,ap:(K,a)=>{K.ev=a},lab:()=>'偶数の桁の数'},
  {w:3,mk:()=>({p:pair()}),ans:(d,q)=>d[q.p[0]]%2===d[q.p[1]]%2,ap:(K,a,q)=>{K.sm[pk(q)]=a},lab:q=>pn(q)+'の偶奇は同じか'},
  {w:8,mk:()=>({k:rk()}),ans:(d,q)=>Math.floor(d[q.k]/3),ap:(K,a,q)=>{K.lo[q.k]=Math.max(K.lo[q.k],a*3);K.hi[q.k]=Math.min(K.hi[q.k],a*3+2>9?9:a*3+2)},lab:q=>L3[q.k]+'の範囲（3刻み）'},
  {w:8,mk:()=>({p:pair()}),ans:(d,q)=>d[q.p[0]]-d[q.p[1]],ap:(K,a,q)=>{K.dx[pk(q)]=a},lab:q=>L3[q.p[0]]+'−'+L3[q.p[1]]+'の値'},
- {w:8,nr:[0,9],mk:()=>({n:rn(0,9)}),ans:(d,q)=>d.includes(q.n),ap:(K,a,q)=>{K.has[q.n]=a},lab:q=>q.n+'が含まれているか'},
+ {w:8,nr:[0,9],mk:()=>({n:rn(0,9)}),ans:(d,q)=>d.includes(q.n),ap:(K,a,q)=>{K.has[q.n]=a},lab:q=>NG(q.n)+'が含まれているか'},
  {w:8,mk:()=>({}),ans:d=>Math.max(...d)-Math.min(...d),ap:(K,a)=>{K.mm=a},lab:()=>'最大値と最小値の差'},
- {w:6,nr:[1,9],mk:()=>({n:rn(5,8)}),ans:(d,q)=>Math.max(...d)>=q.n,ap:(K,a,q)=>{const b=bnd(K.mxlo,K.mxhi,a,q.n);K.mxlo=b[0];K.mxhi=b[1]},lab:q=>'最大値は'+q.n+'以上か'},
- {w:6,nr:[1,9],mk:()=>({n:rn(1,4)}),ans:(d,q)=>Math.min(...d)>=q.n,ap:(K,a,q)=>{const b=bnd(K.mnlo,K.mnhi,a,q.n);K.mnlo=b[0];K.mnhi=b[1]},lab:q=>'最小値は'+q.n+'以上か'},
+ {w:6,nr:[1,9],mk:()=>({n:rn(5,8)}),ans:(d,q)=>Math.max(...d)>=q.n,ap:(K,a,q)=>{const b=bnd(K.mxlo,K.mxhi,a,q.n);K.mxlo=b[0];K.mxhi=b[1]},lab:q=>'最大値は'+NG(q.n)+'以上か'},
+ {w:6,nr:[1,9],mk:()=>({n:rn(1,4)}),ans:(d,q)=>Math.min(...d)>=q.n,ap:(K,a,q)=>{const b=bnd(K.mnlo,K.mnhi,a,q.n);K.mnlo=b[0];K.mnhi=b[1]},lab:q=>'最小値は'+NG(q.n)+'以上か'},
  {w:6,mk:()=>({p:pair()}),ans:(d,q)=>sg(d[q.p[0]]-d[q.p[1]]),ap:(K,a,q)=>{K.cmp[pk(q)]=a},lab:q=>pn(q)+'の大小'},
  {w:4,mk:()=>({}),ans:d=>d.filter(x=>PR.includes(x)).length,ap:(K,a)=>{K.pc=a},lab:()=>'素数(2,3,5,7)の桁の数'},
  {w:4,mk:()=>({}),ans:d=>(d[0]+d[1]+d[2])%3,ap:(K,a)=>{K.m3=a},lab:()=>'A+B+Cを3で割った余り'}
@@ -239,9 +360,9 @@ function mkDef(noGain){
   const t=d[(Math.random()*(noGain?3:4))|0];return {kind:t[0],cat:'def',label:t[1]};
 }
 function newAmmo(){ // 黄：ヒント弾80% 赤：攻撃10% 青：防御10%
-  const r=Math.random();
-  if(r<0.8)return newHint();
-  if(r<0.9){const t=ATK[(Math.random()*ATK.length)|0];return {kind:t[0],cat:'atk',label:t[1]}}
+  const w=[CFG.ch[0]?8:0,CFG.ch[1]?1:0,CFG.ch[2]?1:0];let r=Math.random()*(w[0]+w[1]+w[2]);
+  if(r<w[0])return newHint();r-=w[0];
+  if(r<w[1]){const t=ATK[(Math.random()*ATK.length)|0];return {kind:t[0],cat:'atk',label:t[1]}}
   return mkDef();
 }
 function genItem(){let a;do{a=newAmmo()}while(a.kind==='gain');return a}
@@ -306,7 +427,7 @@ function drawAmmo(){
     :'<div style="opacity:.75">アイテムなし（宝箱を探そう）</div>';
 }
 drawAmmo();
-function flashMsg(t,c,d=0.3){hitEl.textContent=t;hitEl.style.color=c;hitEl.style.opacity=1;hitTimer=d}
+function flashMsg(t,c,d=0.3){hitEl.textContent=t;hitEl.style.color=c;hitEl.style.opacity=1;hitTimer=d;hitEl.classList.remove('pop');void hitEl.offsetWidth;hitEl.classList.add('pop')}
 // ===== ワープゾーン（同じ色の2つが対。地上と高所をつなぐ）=====
 const gnear=(x,z)=>{let bd=1e9,br=reach[0];for(const r of reach){const d=Math.hypot(wd(r[0]-x),wd(r[1]-z));if(d<bd){bd=d;br=r}}return br};
 const WC=[0x22ddff,0xff55dd,0x66ff66];
@@ -326,6 +447,7 @@ WP.forEach((pr,i)=>pr.forEach((q,j)=>{
   g.add(ring,beam);scene.add(g);
   warps.push({g,x:q[0],z:q[1],y:q[2],col:WC[i],other:j===0?warps.length+1:warps.length-1});
 }));
+if(!CFG.warp){for(const w of warps)w.g.visible=false;warps.length=0} // ワープなし設定
 // 宝箱の出現位置：4割は高所（空いているスポット）、残りは地上
 function spawnChest(c){
   const used=[...chests.filter(o=>o!==c&&o.on).map(o=>[o.x,o.z]),...warps.map(w=>[w.x,w.z])];
@@ -335,16 +457,16 @@ function spawnChest(c){
   }
   const r=rpos();c.x=r[0];c.z=r[1];c.y=0;
 }
-const CC={hint:[0xe8c020,0xffe066],atk:[0xcc3322,0xff6655],def:[0x2f6fd0,0x66a0ff]}; // 黄=ヒント弾 赤=攻撃 青=防御
+const CC={hint:[0xffcf2e,0xffe680],atk:[0xff4d4d,0xff8a80],def:[0x3d8bff,0x80b4ff]}; // 黄=ヒント弾 赤=攻撃 青=防御
 const chests=[];
 function setChest(c){
   c.item=newAmmo();const col=CC[c.item.cat];
   c.box.material.color.setHex(col[0]);c.box.material.emissive.setHex(col[0]);c.box.material.emissive.multiplyScalar(0.3);
   c.beam.material.color.setHex(col[1]);
 }
-for(let i=0;i<10;i++){
+for(let i=0,NC=Math.round(10*(S/90)**1.5);i<NC;i++){
   const g=new THREE.Group();
-  const box=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.6,0.6),new THREE.MeshLambertMaterial({color:0xc8962a}));
+  const box=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.6,0.6),toonMat({color:0xc8962a}));
   box.position.y=0.3;
   const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,5,6),new THREE.MeshBasicMaterial({color:0xffe066,transparent:true,opacity:0.4}));
   beam.position.y=2.5;
@@ -360,7 +482,7 @@ function drawNum(){
   const tb=bots[tsel],hex=tb?'#'+tb.color.toString(16).padStart(6,'0'):'#888';
   numEl.innerHTML='<div style="opacity:.85;margin-bottom:4px">数字判定　Tab：相手　0-9：入力　Enter：判定（ゲージ1消費）　BS：消す</div>'
     +'<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:26px"><span style="width:24px;height:24px;border-radius:50%;background:'+hex+';flex:none"></span>'+[0,1,2].map(i=>'<span class="dg"'+(gbuf[i]?'':' style="opacity:.4"')+'>'+(gbuf[i]||'ABC'[i])+'</span>').join('')+'</div>'
-    +'<div style="margin-top:4px">'+[0,1,2].map(i=>{const v=Math.max(0,Math.min(1,gauge-i));return '<span class="gs"><i style="width:'+Math.round(v*100)+'%;background:'+(v>=1?'#3ddc84':'#f0c040')+'"></i></span>'}).join('')+'</div>';
+    +'<div style="margin-top:4px">'+[0,1,2].map(i=>{const v=Math.max(0,Math.min(1,gauge-i));return '<span class="gs'+(v>=1?' full':'')+'"><i style="width:'+Math.round(v*100)+'%;background:'+(v>=1?'#3ddc84':'#f0c040')+'"></i></span>'}).join('')+'</div>';
 }
 function drawCnt(){cntEl.textContent='残り '+bots.filter(b=>b.st!=='out').length+' 人'+(p.inv>0?'　無敵 '+p.inv.toFixed(0):'')+(p.spd>0?'　加速 '+p.spd.toFixed(0):'')+(p.frz>0?'　麻痺 '+p.frz.toFixed(0):'')+(p.blind>0?'　数字が見えない '+p.blind.toFixed(0):'')+(p.hide>0?'　数字隠し '+p.hide.toFixed(0):'')+(p.cloak>0?'　透明 '+p.cloak.toFixed(0):'')+(p.xray>0?'　透視 '+p.xray.toFixed(0):'')+(p.radar>0?'　位置表示 '+p.radar.toFixed(0):'')+'　ステップ '+(p.cd>0?p.cd.toFixed(1)+'s':'OK')}
 function renderLog(){
@@ -455,7 +577,10 @@ function initAudio(){
     }
   }catch(e){ac=null}
 }
+const FXC={get1:'#ffd23f',correct1:'#2ec4b6',wrong1:'#ff4d6d',explosion1:'#ffffff',powerup1:'#ff6b9d',warp1:'#7fe0ff'},fxEl=document.getElementById('fx');
+function fx(c){fxEl.style.setProperty('--fxc',c);fxEl.classList.remove('go');void fxEl.offsetWidth;fxEl.classList.add('go')}
 function sfx(k,vol){
+  if(FXC[k])fx(FXC[k]);
   if(!ac)return;
   if(!sbuf[k]){if(SYN[k])SYN[k]();return}
   const s=ac.createBufferSource(),g=ac.createGain();
@@ -484,14 +609,15 @@ const SYN={
 let xrayOn=false;
 function setWalls(on){xrayOn=on;for(const m of bm){m.material.transparent=on;m.material.opacity=on?0.28:1;m.material.depthWrite=!on}}
 // ===== 無敵中のメロディ：終わりが近づく（残り2秒）とテンポが上がり、音程も上がる =====
-const MEL=[523,659,784,1047,784,659,523,392],MELV=0.05;
+const MEL=[523,659,784,1047,784,659,523,392],MEL2=[392,523,659,784,659,523,392,330],MELV=0.05;
 let mi=0,mt=0;
+let startInv=false;
 function melody(dt){
-  if(!ac||p.inv<=0){mi=0;mt=0;return}
+  if(!ac||p.inv<=0){mi=0;mt=0;if(p.inv<=0)startInv=false;return}
   mt-=dt;if(mt>0)return;
-  const late=p.inv<2,f=MEL[mi++%MEL.length]*(late?1.335:1);
-  tone(f,0,late?0.07:0.12,'square',MELV);
-  mt=late?0.075:0.13;
+  const late=p.inv<(startInv?4.5:2),fin=startInv&&p.inv<1.5,f=((mi>>3)&1?MEL2:MEL)[mi++%8]*(fin?1.5:late?1.335:1);
+  tone(f,0,fin?0.05:late?0.07:0.12,'square',MELV);
+  mt=fin?0.055:late?0.075:0.13;
 }
 // ===== ミニマップ（自分中心・北が上。明るいほど高い建物。黒点は高所）=====
 const mmc=document.getElementById('mm'),mm=mmc.getContext('2d'),MMW=180,MR=34,MS=MMW/(MR*2);
@@ -500,12 +626,17 @@ const hx6=c=>'#'+c.toString(16).padStart(6,'0');
 function drawMini(){
   const c=MMW/2;
   mm.clearRect(0,0,MMW,MMW);mm.save();mm.beginPath();mm.arc(c,c,c-1,0,Math.PI*2);mm.clip();
-  mm.fillStyle='#2d3d2d';mm.fillRect(0,0,MMW,MMW);
+  mm.fillStyle='#3f7f6e';mm.fillRect(0,0,MMW,MMW);
+  {const QM=[['#3f7f6e','#55866a'],['#388a74','#3f7d86']];
+   for(let ix=Math.floor((p.x-MR)/H);ix<=Math.floor((p.x+MR)/H);ix++)for(let iz=Math.floor((p.z-MR)/H);iz<=Math.floor((p.z+MR)/H);iz++){
+     const x0=Math.max(p.x-MR,ix*H),x1=Math.min(p.x+MR,ix*H+H),z0=Math.max(p.z-MR,iz*H),z1=Math.min(p.z+MR,iz*H+H);
+     mm.fillStyle=QM[((iz%2)+2)%2][((ix%2)+2)%2];mm.fillRect(c+(x0-p.x)*MS,c+(z0-p.z)*MS,(x1-x0)*MS,(z1-z0)*MS);
+   }}
   for(const b of mmBoxes){
     const dx=wd(b.cx-p.x),dz=wd(b.cz-p.z);
     if(Math.abs(dx)>MR+b.hx||Math.abs(dz)>MR+b.hz)continue;
     const l=Math.min(240,(80+b.maxY*14)|0);
-    mm.fillStyle='rgb('+l+','+l+','+Math.min(255,l+12)+')';
+    mm.fillStyle='rgb('+l+','+l+','+Math.min(255,l+12)+')';if(b.dyn)mm.fillStyle=b.dyn;
     mm.fillRect(c+(dx-b.hx)*MS,c+(dz-b.hz)*MS,b.hx*2*MS,b.hz*2*MS);
   }
   for(const w of warps){
@@ -587,7 +718,7 @@ function fire(){
   // ヒント弾（無敵・消滅中・脱落済みのボットは素通り）
   const h0=ray.intersectObjects(targets,false).find(h=>{const b=h.object.userData.bot;return !b||(b.st==='alive'&&b.inv<=0)});
   const b=h0&&h0.object.userData.bot;
-  if(b){addLog(b,a);gauge=Math.min(GMAX,gauge+1);drawNum();flashMsg('HIT!','#f44');b.st='gone';b.gone=GONE;b.g.visible=false;b.frz=0}
+  if(b){addLog(b,a);gauge=Math.min(GMAX,gauge+0.5);drawNum();flashMsg('HIT!','#f44');b.st='gone';b.gone=GONE;b.g.visible=false;b.frz=0}
 }
 
 // ===== ボットAI =====
@@ -606,12 +737,20 @@ function los(a,b){ // 視線が建物でさえぎられていないか
 }
 const cellIdx=(x,z)=>(((Math.floor(x+H)%G)+G)%G)*G+(((Math.floor(z+H)%G)+G)%G);
 const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
-function bfsPath(sx,sz,gx,gz){ // 円環マップ上の最短経路（マスの中心を返す）
+// 壁に隣接するマス（壁を背にして動くための目印）
+const wadj=new Uint8Array(G*G);
+for(let i=0;i<G;i++)for(let j=0;j<G;j++)if(open[i*G+j]){let n=0;for(let a=-1;a<=1&&!n;a++)for(let b=-1;b<=1;b++)if(!open[((i+a+G)%G)*G+((j+b+G)%G)]){n=1;break}wadj[i*G+j]=n}
+const rposW=()=>{for(let n=0;n<40;n++){const r=reach[(Math.random()*reach.length)|0];if(wadj[cellIdx(r[0],r[1])])return r}return rpos()};
+function bfsPath(sx,sz,gx,gz){ // 円環マップ上の経路。壁ぞいのマスは安く、広い場所は少し高くして、壁ぞいを通りやすくする
   const si=cellIdx(sx,sz),gi=cellIdx(gx,gz);if(si===gi)return [];
-  const prev=new Int32Array(G*G).fill(-1),q=[si];prev[si]=si;
-  for(let h=0;h<q.length&&prev[gi]<0;h++){
-    const c=q[h],i=(c/G)|0,j=c%G;
-    for(const [a,b] of DIRS){const k=((i+a+G)%G)*G+((j+b+G)%G);if(open[k]&&prev[k]<0){prev[k]=c;q.push(k)}}
+  const N=G*G,dist=new Float64Array(N).fill(1e9),prev=new Int32Array(N).fill(-1),hd=[],hi=[];
+  const push=(d,k)=>{let n=hd.length;hd.push(d);hi.push(k);while(n>0){const u=(n-1)>>1;if(hd[u]<=hd[n])break;[hd[u],hd[n]]=[hd[n],hd[u]];[hi[u],hi[n]]=[hi[n],hi[u]];n=u}};
+  const pop=()=>{const k=hi[0],ld=hd.pop(),lk=hi.pop();if(hd.length){hd[0]=ld;hi[0]=lk;let n=0;for(;;){let m=n;const a=2*n+1,b=a+1;if(a<hd.length&&hd[a]<hd[m])m=a;if(b<hd.length&&hd[b]<hd[m])m=b;if(m===n)break;[hd[m],hd[n]]=[hd[n],hd[m]];[hi[m],hi[n]]=[hi[n],hi[m]];n=m}}return k};
+  dist[si]=0;prev[si]=si;push(0,si);
+  while(hd.length){
+    const dd=hd[0],c=pop();if(dd>dist[c])continue;if(c===gi)break;
+    const i=(c/G)|0,j=c%G;
+    for(const [a,b] of DIRS){const k=((i+a+G)%G)*G+((j+b+G)%G);if(!open[k])continue;const nd=dd+(wadj[k]?1:1.4);if(nd<dist[k]){dist[k]=nd;prev[k]=c;push(nd,k)}}
   }
   if(prev[gi]<0)return [];
   const out=[];for(let c=gi;c!==si;c=prev[c])out.push([cx((c/G)|0),cx(c%G)]);
@@ -621,12 +760,13 @@ function nextWp(b){if(b.path.length){const w=b.path.shift();b.tx=w[0];b.tz=w[1]}
 function botGoal(b){ // 弾が足りなければ宝箱へ、そうでなければ相手の背後3mへ
   let goal=null;
   if(b.ammo.length<2){let bd=1e9;for(const c of chests)if(c.on&&c.y===0&&c.item.cat==='hint'){const d=Math.hypot(wd(c.x-b.x),wd(c.z-b.z));if(d<bd){bd=d;goal=[c.x,c.z]}}}
-  if(!goal||Math.random()<0.3){
+  if(b.wander>0){const r=rposW();goal=[r[0],r[1]]} // 重なり・立ち往生のあとは、壁ぞいの場所へ移動して仕切り直す
+  else if(!goal||Math.random()<0.3){
     let bd=1e9,t=null;
     for(const o of [PL,...bots])if(o!==b&&aLive(o)&&aVuln(o)&&aY(o)<0.5){const d=Math.hypot(wd(aX(o)-b.x),wd(aZ(o)-b.z));if(d<bd){bd=d;t=o}}
     if(t){const f=aFwd(t),g=gnear(aX(t)-f[0]*3,aZ(t)-f[1]*3);goal=[g[0],g[1]]}
   }
-  if(!goal){const r=rpos();goal=[r[0],r[1]]}
+  if(!goal){const r=rposW();goal=[r[0],r[1]]}
   b.path=bfsPath(b.x,b.z,goal[0],goal[1]);b.pt=1.2;b.t=0;nextWp(b);
 }
 function winCheck(){
@@ -652,33 +792,37 @@ function botHit(t,by){ // ヒント弾が当たる：消えてランダム位置
 function botThink(b,dt){
   b.gauge=Math.min(GMAX,b.gauge+dt/120);b.fcd-=dt;
   const others=[PL,...bots].filter(o=>o!==b&&aLive(o));
-  b.fv=null;let near=null,nd=1e9;
+  b.fv=null;let near=null,nd=1e9;const vis={};
   for(const o of others){
     const dx=wd(aX(o)-b.x),dz=wd(aZ(o)-b.z),d=Math.hypot(dx,dz);
     if(d>32||!aVuln(o)||!los(b,o))continue;
+    {const kk=aKey(o);vis[kk]=1;b.rt[kk]=(b.rt[kk]||0)+dt}
     if(d<nd){nd=d;near=o}
     const f=aFwd(o); // 相手の背中側（後方60度・12m以内）から見えたら数字を読む
-    if(b.blind<=0&&d<12&&aShown(o)&&(dx*f[0]+dz*f[1])/d>0.5)b.cand[aKey(o)]=[aNum(o)];
+    if(CFG.num&&b.blind<=0&&d<12&&aShown(o)&&(dx*f[0]+dz*f[1])/d>0.5)b.cand[aKey(o)]=[aNum(o)];
   }
+  for(const k in b.rt)if(!vis[k])delete b.rt[k];
   if(near&&nd<26)b.fv=[wd(aX(near)-b.x),wd(aZ(near)-b.z)];
   // ヒント弾：正面に見えている相手を撃つ。当たれば候補が絞られ、ゲージが1溜まる
   const hi=b.ammo.findIndex(a=>a.kind==='hint');
-  if(hi>=0&&b.fcd<=0&&near&&nd<26){
+  if(hi>=0&&b.fcd<=0&&near&&nd<26&&(b.rt[aKey(near)]||0)>=REACT&&(near!==PL||Date.now()-warpAt>WGRACE*1000)){
     const f=aFwd(b),dx=wd(aX(near)-b.x),dz=wd(aZ(near)-b.z);
     if((dx*f[0]+dz*f[1])/nd>0.9&&Math.random()<0.8){
       const a=b.ammo.splice(hi,1)[0],h=HT[a.ty];b.fcd=2.5;
       if(nd<30)sfx('lazer1',0.3);
-      const ans=h.ans([...aNum(near)].map(Number),a.q),k=aKey(near);
-      b.cand[k]=(b.cand[k]||ALL).filter(n=>h.ans([...n].map(Number),a.q)===ans);
-      b.gauge=Math.min(GMAX,b.gauge+1);
-      botHit(near,b);
+      const miss=Math.random()<MISS,ans=h.ans([...aNum(near)].map(Number),a.q),k=aKey(near);
+      if(!miss){ // 3発に1発は外れる
+        b.cand[k]=(b.cand[k]||ALL).filter(n=>h.ans([...n].map(Number),a.q)===ans);
+        b.gauge=Math.min(GMAX,b.gauge+0.5);
+        botHit(near,b);
+      }
     }
   }
   // 数字判定（ゲージ1で1回）：候補が少ない相手に答える
   if(b.gauge>=1){
     let best=null,bm=1e9;
     for(const o of others){const c=b.cand[aKey(o)];if(c&&c.length&&c.length<bm){bm=c.length;best=o}}
-    if(best&&bm<=Math.floor(b.gauge)*3){
+    if(best&&(bm<=Math.floor(b.gauge)*BGUESS||(b.gauge>=GMAX-0.05&&bm<=30))){
       const c=b.cand[aKey(best)],g=c[(Math.random()*c.length)|0];
       b.gauge-=1;
       if(aNum(best)===g)botKill(best,b);else b.cand[aKey(best)]=c.filter(x=>x!==g);
@@ -689,28 +833,60 @@ function botThink(b,dt){
 let started=false,SENS=1;
 try{const v=parseFloat(localStorage.getItem('nh_sens'));if(v>0)SENS=v}catch(e){}
 const homeEl=document.getElementById('home'),hmain=document.getElementById('hmain'),hpanel=document.getElementById('hpanel');
-const HELP='<b>遊び方</b><br>目的：他のプレイヤーの3桁の数字を当てて、全員を脱落させる。背中の数字を読まれると、あなたも脱落します。<br>WASD：移動　Space：ジャンプ（空中でもう一度で二段ジャンプ）　Shift：ステップ（移動中に押す。3秒に1回）<br>マウス／矢印キー：視点　クリックかF：アイテムを使う　ホイール：アイテム選択　Q/E：ヒントの数値変更<br>Tab：判定する相手（色）を選ぶ　数字キー3桁＋Enter：判定（ゲージ1つ消費。2分で1ゲージ／ヒント弾が当たると1ゲージ）<br>M：メモ（相手ごとにページ。移動はOK、アイテムは不可）　Esc：一時停止<br>宝箱：黄＝ヒント弾、赤＝攻撃、青＝防御。光る輪はワープゾーン（同じ色の輪へ移動。3秒間、数字が見えなくなります）。<br>開始と復活の5秒間は無敵で、誰の数字も見えません。';
+const HELP='<b>遊び方</b><br>目的：他のプレイヤーの3桁の数字を当てて、全員を脱落させる。背中の数字を読まれると、あなたも脱落します。<br>WASD：移動　Space：ジャンプ（空中でもう一度で二段ジャンプ）　Shift：ステップ（移動中に押す。3秒に1回）<br>マウス／矢印キー：視点　クリックかF：アイテムを使う　ホイール：アイテム選択　Q/E：ヒントの数値変更<br>Tab：判定する相手（色）を選ぶ　数字キー3桁＋Enter：判定（ゲージ1つ消費。2分で1ゲージ／ヒント弾が当たると0.5ゲージ）<br>M：メモ（相手ごとにページ。移動はOK、アイテムは不可）　Esc：一時停止（ホーム画面に戻れます）<br>宝箱：黄＝ヒント弾、赤＝攻撃、青＝防御。床の色は4つのエリアで少しずつ違います。黄色い床は上下するエレベーター、ピンクの壁は左右に動きます（はさまれると押し出されます）。対戦設定で、背中の数字・ワープ・宝箱の種類・ボット人数・マップの広さを変えられます。光る輪はワープゾーン（同じ色の輪へ移動。3秒間、数字が見えなくなります）。<br>開始時の15秒間と、復活後の5秒間は無敵で、誰の数字も見えません。';
+const tgb=(k,on,t)=>'<button class="tg'+(on?' on':'')+'" data-k="'+k+'">'+t+'</button>';
+function ruleDraw(note){
+  const C=CFG,cn=['黄＝ヒント弾','赤＝攻撃','青＝防御'];
+  hpanel.innerHTML='<b>対戦設定</b>　<span style="opacity:.7">（この端末に保存されます）</span>'
+   +'<div class="rw">背中の数字：'+tgb('num',C.num,C.num?'あり':'なし')+'</div>'
+   +'<div class="rw">ワープ：'+tgb('warp',C.warp,C.warp?'あり':'なし')+'</div>'
+   +'<div class="rw">出る宝箱：'+cn.map((t,i)=>tgb('ch'+i,C.ch[i],t)).join('')+'</div>'
+   +'<div class="rw">ボットの人数：'+[1,2,3].map(n=>tgb('bots'+n,C.bots===n,n+'人')).join('')+'</div>'
+   +'<div class="rw">マップの広さ：'+[[90,'標準 90m'],[120,'広い 120m'],[150,'特大 150m']].map(([m,t])=>tgb('map'+m,C.map===m,t)).join('')+'</div>'
+   +'<div style="font-size:13px;opacity:.75">背中の数字なし：数字は表示されず、ヒントだけで推理します。マップの広さを変えると、ページを読み込み直します。</div>'
+   +(note?'<div style="color:#d22">'+note+'</div>':'')+'<button id="hb">戻る</button>';
+  document.getElementById('hb').onclick=()=>{hpanel.style.display='none';hmain.style.display='block'};
+}
+hpanel.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('button[data-k]');if(!b)return;
+  const k=b.dataset.k;let note='';
+  if(k==='num')CFG.num=!CFG.num;
+  else if(k==='warp')CFG.warp=!CFG.warp;
+  else if(k[0]==='c'){const i=+k[2];if(CFG.ch[i]&&CFG.ch.filter(Boolean).length===1)note='宝箱は1種類以上オンにしてください';else CFG.ch[i]=!CFG.ch[i]}
+  else if(k.startsWith('bots'))CFG.bots=+k.slice(4);
+  else if(k.startsWith('map')){
+    const m=+k.slice(3);if(m!==CFG.map){CFG.map=m;if(saveCfg()){try{sessionStorage.setItem('nh_open','rule')}catch(e2){}location.reload();return}else note='この環境ではマップの広さを保存できないため、変更できません'}
+  }
+  saveCfg();ruleDraw(note);
+});
 function homePanel(kind){
   hmain.style.display='none';hpanel.style.display='block';
+  if(kind==='rule'){ruleDraw();return}
   hpanel.innerHTML=kind==='help'?HELP+'<br><button id="hb">戻る</button>'
     :'<b>設定</b><br>マウス感度：<input id="hsl" type="range" min="0.3" max="3" step="0.1" value="'+SENS+'"> <span id="hsv">'+SENS.toFixed(1)+'</span><br><span style="opacity:.7">キー設定：準備中（あとで追加します）</span><br><button id="hb">戻る</button>';
   document.getElementById('hb').onclick=()=>{hpanel.style.display='none';hmain.style.display='block'};
   const sl=document.getElementById('hsl');
   if(sl)sl.oninput=()=>{SENS=parseFloat(sl.value);document.getElementById('hsv').textContent=SENS.toFixed(1);try{localStorage.setItem('nh_sens',SENS)}catch(e){}};
 }
-function startGame(){ // 開始：自分とボットは5秒間、無敵かつ誰の数字も見えない
+function startGame(){ // 開始：自分とボットは15秒間、無敵かつ誰の数字も見えない
   homeEl.style.display='none';started=true;initAudio();
   try{rd.domElement.requestPointerLock()}catch(e){}
   p.inv=SPAWNT;p.blind=SPAWNT;
   for(const b of bots){b.inv=SPAWNT;b.blind=SPAWNT;b.plate.visible=false}
+  startInv=true;
+  bots.forEach((b,i)=>{if(i>=CFG.bots){b.st='out';b.g.visible=false}});drawCnt();
 }
 document.getElementById('hs').onclick=startGame;
+document.getElementById('hback').onclick=e=>{e.stopPropagation();location.reload()};
+document.getElementById('hr').onclick=()=>homePanel('rule');
 document.getElementById('hh').onclick=()=>homePanel('help');
 document.getElementById('hc').onclick=()=>homePanel('set');
+try{if(sessionStorage.getItem('nh_open')==='rule'){sessionStorage.removeItem('nh_open');homePanel('rule')}}catch(e){}
 let last=performance.now();
 function loop(t){
   const dt=Math.min(0.05,(t-last)/1000);last=t;
   if(!started){rd.render(scene,cam);requestAnimationFrame(loop);return}
+  updateDyn(t/1000);
   // 視点（矢印キー。麻痺中は不可）
   if(p.frz<=0){p.yaw+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*1.8*dt;p.pitch=Math.max(-1.5,Math.min(1.5,p.pitch+((keys.ArrowUp?1:0)-(keys.ArrowDown?1:0))*1.5*dt))}
   // 移動
@@ -734,7 +910,7 @@ function loop(t){
   // ワープ
   if(p.wlock&&!warps.some(w=>Math.hypot(wd(w.x-p.x),wd(w.z-p.z))<1.6&&Math.abs(p.y-w.y)<1.6))p.wlock=false; // 輪から出るまで再発動しない（立ち止まっても往復しない）
   if(!p.wlock&&p.wcd<=0&&p.frz<=0)for(const w of warps)if(Math.hypot(wd(w.x-p.x),wd(w.z-p.z))<1.2&&Math.abs(p.y-w.y)<1.3){
-    const o=warps[w.other];p.x=o.x;p.z=o.z;p.y=o.y;p.vy=0;p.wcd=1.5;p.wlock=true;p.hide=3;sfx('warp1');flashMsg('ワープ！ 3秒間あなたの数字は見えません','#9ef',1.2);break;
+    const o=warps[w.other];p.x=o.x;p.z=o.z;p.y=o.y;p.vy=0;p.wcd=1.5;p.wlock=true;p.hide=3;warpAt=Date.now();sfx('warp1');flashMsg('ワープ！ 3秒間あなたの数字は見えません','#9ef',1.2);break;
   }
   // タイマーとトラップ
   p.inv=Math.max(0,p.inv-dt);p.spd=Math.max(0,p.spd-dt);p.frz=Math.max(0,p.frz-dt);
@@ -762,17 +938,27 @@ function loop(t){
     }
     if(b.inv>0){
       b.inv-=dt;b.mat.opacity=0.4+0.25*Math.sin(t/80);
-      if(b.inv<=0){b.mat.opacity=1;b.plate.visible=true}
+      if(b.inv<=0){b.mat.opacity=1;b.plate.visible=CFG.num}
     }
     b.t+=dt;b.ait-=dt;b.pt-=dt;if(b.blind>0)b.blind-=dt;
     if(b.ait<=0&&!over){b.ait=0.25;botThink(b,0.25)}
     if(b.pt<=0)botGoal(b);
     for(const c of chests)if(c.on&&c.y===0&&c.item.cat==='hint'&&b.ammo.length<3&&Math.hypot(wd(c.x-b.x),wd(c.z-b.z))<1.3){c.on=false;c.g.visible=false;c.t=RESPAWN;b.ammo.push(c.item)}
+    b.sk=(b.sk||0)+dt;if(b.wander>0)b.wander-=dt;
+    if(b.sk>=1.5){ // 1.5秒でほとんど動けていなければ、4秒間は別の場所へ向かう
+      if(b.sx0!==undefined&&b.frz<=0&&Math.hypot(wd(b.x-b.sx0),wd(b.z-b.sz0))<1.0){b.wander=4;b.pt=0}
+      b.sx0=b.x;b.sz0=b.z;b.sk=0;
+    }
     const dx=wd(b.tx-b.x),dz=wd(b.tz-b.z),d=Math.hypot(dx,dz);
     if(d<0.6){nextWp(b);continue}
     if(b.t>4){b.pt=0;b.t=0;continue}
     const fz0=b.frz>0,k=fz0?0:1;if(fz0)b.frz-=dt;
-    const vx=dx/d*BSPD*dt*k,vz=dz/d*BSPD*dt*k;
+    let ax=dx/d,az=dz/d;
+    const rep1=(ox,oz)=>{let od=Math.hypot(ox,oz);if(od>=1.8)return;if(od<0.05){const q=Math.random()*6.283;ox=Math.cos(q)*0.05;oz=Math.sin(q)*0.05;od=0.05}const w=(1.8-od)/1.8*1.5/Math.max(od,0.3);ax+=ox*w;az+=oz*w};
+    for(const o of bots)if(o!==b&&o.st==='alive')rep1(wd(b.x-o.x),wd(b.z-o.z));
+    rep1(wd(b.x-p.x),wd(b.z-p.z));
+    const mv=Math.hypot(ax,az);if(mv>1){ax/=mv;az/=mv}
+    const vx=ax*BSPD*dt*k,vz=az*BSPD*dt*k;
     let moved=false;
     if(!hit(b.x+vx,b.z,0,0.5)){b.x+=vx;moved=true}
     if(!hit(b.x,b.z+vz,0,0.5)){b.z+=vz;moved=true}
@@ -799,16 +985,16 @@ function loop(t){
       spawnChest(c);setChest(c);c.g.visible=true;c.on=true;
     }
   }
-  for(const b of bots)if(b.st==='alive')b.plate.visible=b.inv<=0&&p.blind<=0; // 開始・復活直後は誰の数字も見えない
+  for(const b of bots)if(b.st==='alive')b.plate.visible=CFG.num&&b.inv<=0&&p.blind<=0; // 開始・復活直後は誰の数字も見えない
   if(hitTimer>0){hitTimer-=dt;if(hitTimer<=0)hitEl.style.opacity=0}
   // 世界は円環：すべての物をプレイヤーに最も近い位置に描く
   for(const m of bm){m.position.x=p.x+wd(m.userData.bx-p.x);m.position.z=p.z+wd(m.userData.bz-p.z)}
   for(const b of bots)b.g.position.set(p.x+wd(b.x-p.x),0,p.z+wd(b.z-p.z));
-  for(const c of chests)c.g.position.set(p.x+wd(c.x-p.x),c.y,p.z+wd(c.z-p.z));
-  for(const w of warps)w.g.position.set(p.x+wd(w.x-p.x),w.y,p.z+wd(w.z-p.z));
+  for(const c of chests)c.g.position.set(p.x+wd(c.x-p.x),c.y+Math.sin(Date.now()/300+c.x)*0.12,p.z+wd(c.z-p.z));
+  for(const w of warps){w.g.position.set(p.x+wd(w.x-p.x),w.y,p.z+wd(w.z-p.z));w.g.children[0].scale.setScalar(1+Math.sin(Date.now()/250)*0.08)}
   drawMini();
   for(const tr of traps){tr.m.position.set(p.x+wd(tr.x-p.x),tr.y+0.03,p.z+wd(tr.z-p.z));tr.m.visible=tr.own==='player'}
-  ground.position.set(p.x,0,p.z);grid.position.set(Math.round(p.x/2)*2,0.02,Math.round(p.z/2)*2);
+  ground.position.set(p.x,0,p.z);groundTex.offset.set((p.x-200)/S+0.5,0.5-(p.z+200)/S);grid.position.set(Math.round(p.x/2)*2,0.02,Math.round(p.z/2)*2);
   cam.position.set(p.x,p.y+1.6,p.z);
   cam.rotation.set(p.pitch,p.yaw,0);
   rd.render(scene,cam);
