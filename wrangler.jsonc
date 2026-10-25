@@ -1,0 +1,18 @@
+{
+  // Workerの名前。今のプロジェクト名と同じにする（違うと別のWorkerとして新しく作られ、URLが変わります）
+  "name": "abacu",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-01",
+
+  // 公開するファイル（index.html と se/ フォルダ）は public/ に置く
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+
+  // 部屋（Durable Object）の設定。Stage 19 で中身を作る
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}
