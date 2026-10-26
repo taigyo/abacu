@@ -16,6 +16,7 @@ export function cleanCfg(s) {
   if (Array.isArray(s.ch) && s.ch.length === 3) c.ch = s.ch.map(Boolean);
   if ([90, 120, 150].includes(s.map)) c.map = s.map;
   if ([1, 2, 3].includes(s.bots)) c.bots = s.bots;
+  if ([0, 1, 2, 3].includes(s.obots)) c.obots = s.obots;
   if ([0, 1, 2].includes(s.diff)) c.diff = s.diff;
   if (typeof s.hb === "boolean") c.hb = s.hb;
   if (s.mode === "surv" || s.mode === "pts") c.mode = s.mode;
@@ -92,7 +93,16 @@ export class RoomCore {
         const t = this.now();
         if (t - m.last < 25) break;
         m.last = t;
-        this.broadcast({ t: "pos", id, x: d.x, z: d.z, y: d.y, yaw: d.yaw, ts: t }, id);
+        this.broadcast({ t: "pos", id, x: d.x, z: d.z, y: d.y, yaw: d.yaw, f: num(d.f) ? d.f | 0 : 0, ts: t }, id);
+        break;
+      }
+      case "to": // 特定の相手へ、ゲーム中のやりとり（弾の命中・判定・宝箱など）をそのまま届ける
+      case "all": { // 全員へ
+        if (this.phase !== "playing" || !d.m || typeof d.m !== "object" || typeof d.m.k !== "string") break;
+        const out = { t: "m", from: id, m: d.m };
+        if (d.t === "all") { this.broadcast(out, id); break; }
+        const target = this.members.get(d.to);
+        if (target && target.id !== id) this.send(target, out);
         break;
       }
       default:
