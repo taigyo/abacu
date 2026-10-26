@@ -67,6 +67,10 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 #hpanel button.tg.on{background:var(--teal)}
 #hpanel .rw{margin:8px 0}
 #hpanel button.go{background:var(--yel)}
+#hpanel button.sm{display:inline-block;width:auto;margin:6px 0 0;padding:2px 10px;font-size:12px;font-weight:700;border-width:2px;border-radius:8px;box-shadow:none;background:transparent;color:inherit;opacity:.55}
+#hpanel button.sm:hover{opacity:1;transform:none;box-shadow:none}
+#hback.sm{margin-top:30px;padding:2px 10px;font-size:12px;border-width:2px;border-radius:8px;box-shadow:none;background:transparent;color:inherit;opacity:.5;text-shadow:none}
+#hback.sm:hover{opacity:1}
 #hpanel button.tg:disabled{opacity:.5;cursor:default}
 #msg input[type=range]{accent-color:var(--pink);vertical-align:middle}
 </style></head><body>
@@ -83,7 +87,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 <script>
 // ===== 対戦設定（この端末に保存。オンラインではホストの設定を全員に送る想定）=====
 const cfgFrom=s=>{
-  const c={num:true,warp:true,ch:[true,true,true],map:90,bots:3,diff:1,hb:false,mode:'surv',time:0,goal:5};
+  const c={num:true,warp:true,ch:[true,true,true],map:90,bots:3,obots:0,diff:1,hb:false,mode:'surv',time:0,goal:5};
   if(!s||typeof s!=='object')return c;
   if(typeof s.num==='boolean')c.num=s.num;
   if(typeof s.warp==='boolean')c.warp=s.warp;
@@ -91,6 +95,7 @@ const cfgFrom=s=>{
   c.ch[0]=true; // 黄色（ヒント弾）は必須
   if([90,120,150].includes(s.map))c.map=s.map;
   if([1,2,3].includes(s.bots))c.bots=s.bots;
+  if([0,1,2,3].includes(s.obots))c.obots=s.obots;
   if([0,1,2].includes(s.diff))c.diff=s.diff;
   if(typeof s.hb==='boolean')c.hb=s.hb;
   if(s.mode==='surv'||s.mode==='pts')c.mode=s.mode;
@@ -105,10 +110,15 @@ let matchT=0; // 「ためす」モード（誰もいない空間）
 const saveCfg=()=>{try{localStorage.setItem('nh_cfg',JSON.stringify(CFG));return true}catch(e){return false}};
 
 // ===== オンライン（Stage 19：部屋・参加者・位置の同期）=====
-const NET={ws:null,id:0,host:false,room:'',members:[],cfg:null,ghosts:{},off:0,bestRtt:1e9,on:false,tq:0,name:'',retry:0,started:false};
+const NET={ws:null,id:0,host:false,room:'',members:[],cfg:null,ghosts:{},off:0,bestRtt:1e9,nums:{},chestList:null,on:false,tq:0,name:'',retry:0,started:false};
 const netNow=()=>Date.now()+NET.off;
+const slotOf=id=>bots.find(b=>b.remote===id);
+const hostId=()=>{const h=NET.members.find(m=>m.host);return h?h.id:0};
 const netSend=o=>{try{if(NET.ws&&NET.ws.readyState===1)NET.ws.send(JSON.stringify(o))}catch(e){}};
+const netTo=(id,m)=>netSend({t:'to',to:id,m});
+const netAll=m=>netSend({t:'all',m});
 const newCode=()=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<4;i++)s+=A[(Math.random()*A.length)|0];return s};
+const randName=()=>['きつね','たぬき','うさぎ','ぺんぎん','くま','ねこ','いぬ','ふくろう','かめ','ぱんだ'][(Math.random()*10)|0]+((Math.random()*90+10)|0);
 const getName=()=>{try{return localStorage.getItem('nh_name')||''}catch(e){return ''}};
 const setName=n=>{try{localStorage.setItem('nh_name',n)}catch(e){}};
 const cfgText=c=>[c.mode==='pts'?'ポイント制（先取り'+c.goal+'点）':'サバイバル',c.time?'制限'+(c.time/60)+'分':'制限なし','マップ'+c.map+'m','背中の数字'+(c.num?'あり':'なし'),'ワープ'+(c.warp?'あり':'なし'),c.hb?'ヒット＆ブロー':'あたり/はずれのみ'].join('　');
@@ -136,7 +146,10 @@ function netMsg(d,create){
         return;
       }
       homePanel('lobby');break;
-    case 'members':NET.members=d.members;NET.host=d.members.some(m=>m.id===NET.id&&m.host);if(hpanel.dataset.k==='lobby')lobbyDraw();break;
+    case 'members':{
+      const was=NET.host;NET.members=d.members;NET.host=d.members.some(m=>m.id===NET.id&&m.host);
+      if(online&&!was&&NET.host)for(const c of chests)if(!c.on&&c.t>1e11)c.t=RESPAWN; // ホストを引き継いだら、宝箱の復活を受け持つ
+      if(hpanel.dataset.k==='lobby')lobbyDraw();break}
     case 'cfg':
       NET.cfg=cfgFrom(d.cfg);
       if(!NET.host&&NET.cfg.map!==S){try{const c=cfgFrom(JSON.parse(localStorage.getItem('nh_cfg')||'{}'));c.map=NET.cfg.map;localStorage.setItem('nh_cfg',JSON.stringify(c));sessionStorage.setItem('nh_boot','join:'+NET.room);location.reload()}catch(e){}return}
@@ -147,10 +160,14 @@ function netMsg(d,create){
       hpanel.innerHTML='まもなくスタート…';
       setTimeout(startOnline,Math.max(0,d.t0-netNow()));break;
     case 'pos':{
-      let o=NET.ghosts[d.id];
-      if(!o){const m=NET.members.find(x=>x.id===d.id)||{name:'?',color:'#ffffff'};o=NET.ghosts[d.id]=mkGhost(m);o.x=d.x;o.z=d.z;o.y=d.y;o.yaw=d.yaw}
-      o.tx=d.x;o.tz=d.z;o.ty=d.y;o.tyaw=d.yaw;if(online)o.g.visible=true;break}
-    case 'left':{const o=NET.ghosts[d.id];if(o){scene.remove(o.g);delete NET.ghosts[d.id]}NET.members=NET.members.filter(m=>m.id!==d.id);break}
+      const b=slotOf(d.id);if(!b)break;
+      b.tx=d.x;b.tz=d.z;b.ty=d.y;b.tyaw=d.yaw+Math.PI;const f=d.f|0;
+      b.inv=(f&1)?1:0;b.cl=!!(f&2);
+      if(b.st!=='out'){if(f&8)markOut(b,false);else b.st=b.st==='gone'&&b.goneT>0?'gone':'alive'}
+      if(!b.seen){b.seen=1;b.x=d.x;b.z=d.z;b.y=d.y;b.yaw=b.tyaw}
+      break}
+    case 'm':onNetMsg(d.from,d.m);break;
+    case 'left':{const o=NET.ghosts[d.id];if(o){scene.remove(o.g);delete NET.ghosts[d.id]}const b=slotOf(d.id);if(b&&b.st!=='out')markOut(b,false);NET.members=NET.members.filter(m=>m.id!==d.id);break}
   }
 }
 function mkGhost(m){ // ほかのプレイヤーの姿（名前つき）
@@ -165,8 +182,64 @@ function mkGhost(m){ // ほかのプレイヤーの姿（名前つき）
   g.add(body,head,sh,sp);scene.add(g);
   return {g,color:m.color,x:0,z:0,y:0,yaw:0,tx:0,tz:0,ty:0,tyaw:0};
 }
+// ---- オンライン対戦 ----
+// 他のプレイヤーは、ボット用の枠（bots[]）に入れて扱う。これで、Tabでの相手選択・ヒントの記録・メモ・弾の当たり判定をそのまま使える
+function setBotNum(b,n){b.num=n;b.plate.material.map=mkPlate(n);b.plate.material.needsUpdate=true}
+function assignSlots(){
+  const others=NET.members.filter(m=>m.id!==NET.id);
+  for(const k in NET.ghosts){scene.remove(NET.ghosts[k].g);delete NET.ghosts[k]}
+  bots.forEach((b,i)=>{
+    const m=others[i];
+    if(!m){b.remote=0;b.st='out';b.g.visible=false;return}
+    b.remote=m.id;b.name=m.name;b.color=parseInt(String(m.color).slice(1),16)||0xffffff;b.mat.color.setHex(b.color);
+    b.st='alive';b.inv=1;b.cl=false;b.blind=0;b.seen=0;b.y=0;b.K=newK();b.hb=[];b.g.visible=true;b.kills=0;
+    if(NET.nums[m.id])setBotNum(b,NET.nums[m.id]);
+  });
+  if(!NET.host){for(const c of chests){c.on=false;c.g.visible=false;c.t=1e12;c.pend=false}} // 宝箱はホストが決める（ゲストは届くまで隠す）
+  if(!NET.host&&NET.chestList)applyChests(NET.chestList);
+  netAll({k:'num',n:myNum});
+  if(NET.host)netAll({k:'chests',list:chests.map(chestData)});
+  renderLog();
+}
+const chestData=c=>({x:c.x,z:c.z,y:c.y,on:c.on,item:c.item});
+function applyChest(i,d){const c=chests[i];if(!c)return;if(d.x!==undefined){c.x=d.x;c.z=d.z;c.y=d.y}c.on=d.on;c.pend=false;if(d.item){c.item=d.item;paintChest(c)}c.g.visible=d.on;if(!NET.host)c.t=1e12}
+function applyChests(list){list.forEach((d,i)=>applyChest(i,d))}
+function hostTake(i,who){ // 宝箱を取れる人を1人に決めるのはホスト
+  const c=chests[i];if(!c||!c.on)return;
+  c.on=false;c.g.visible=false;c.t=RESPAWN;c.pend=false;
+  netAll({k:'chest',i,on:false});
+  if(who===NET.id)gotItem(c.item);else netTo(who,{k:'grant',item:c.item});
+}
+function gotItem(item){if(ammo.length<MAXAMMO&&item){ammo.push(item);drawAmmo();sfx('get1')}}
+function markOut(b,byMe){
+  b.st='out';b.g.visible=false;drawCnt();renderLog();
+  if(bots[tsel]===b)cycleTarget(1);
+  sfx('explosion1',0.5);if(byMe)flashMsg('脱落させた！','#6f6',1.2);
+  winCheck();
+}
+function remoteStep(b,dt){
+  const a=Math.min(1,dt*12);
+  b.x=wd(b.x+wd(b.tx-b.x)*a);b.z=wd(b.z+wd(b.tz-b.z)*a);b.y+=(b.ty-b.y)*a;
+  let dy=b.tyaw-b.yaw;dy-=Math.round(dy/6.2832)*6.2832;b.yaw+=dy*a;
+  b.g.rotation.y=b.yaw;b.g.visible=b.st==='alive'&&!b.cl;
+  if(b.goneT>0)b.goneT-=dt;
+}
+function onNetMsg(from,m){
+  if(!m||typeof m!=='object')return;
+  const b=slotOf(from);
+  switch(m.k){
+    case 'num':if(typeof m.n==='string'&&/^\d{3}$/.test(m.n)){NET.nums[from]=m.n;if(b)setBotNum(b,m.n)}break;
+    case 'hit':if(b&&online&&!over&&aVuln(PL))botHit(PL,b);break; // ヒント弾が当たった：消えて別の場所に再出現
+    case 'elim':if(b&&online&&!over)botKill(PL,b);break; // 数字を当てられた（無敵中でも、数字が当たれば脱落）
+    case 'out':if(b&&b.st!=='out')markOut(b,m.by===NET.id);break;
+    case 'chests':NET.chestList=m.list;if(online)applyChests(m.list);break;
+    case 'chest':if(online&&Array.isArray(chests)&&chests[m.i])applyChest(m.i,m);break;
+    case 'take':if(NET.host&&online)hostTake(m.i,from);break;
+    case 'grant':if(online)gotItem(m.item);break;
+  }
+}
 function startOnline(){
-  Object.assign(CFG,cfgFrom(NET.cfg));CFG.map=S;
+  Object.assign(CFG,cfgFrom(NET.cfg));CFG.map=S;CFG.mode='surv';CFG.time=0;CFG.bots=0; // 今のオンラインは、サバイバルで人どうしの対戦
   startGame(false,true);
   bootMsg=true;document.getElementById('mtt').textContent='スタート！';document.getElementById('mtc').textContent='クリックで操作開始';msg.style.display='flex';
   NET.on=true;
@@ -458,7 +531,7 @@ function mkDef(noGain){
 function newAmmo(){ // 黄：ヒント弾80% 赤：攻撃10% 青：防御10%
   const w=[CFG.ch[0]?8:0,CFG.ch[1]?1:0,CFG.ch[2]?1:0];let r=Math.random()*(w[0]+w[1]+w[2]);
   if(r<w[0])return newHint();r-=w[0];
-  if(r<w[1]){const t=ATK[(Math.random()*ATK.length)|0];return {kind:t[0],cat:'atk',label:t[1]}}
+  if(r<w[1]){const L=online?ATK.filter(x=>x[0]!=='trap'):ATK,t=L[(Math.random()*L.length)|0];return {kind:t[0],cat:'atk',label:t[1]}}
   return mkDef();
 }
 function genItem(){let a;do{a=newAmmo()}while(a.kind==='gain');return a}
@@ -556,11 +629,11 @@ function spawnChest(c){
 }
 const CC={hint:[0xffcf2e,0xffe680],atk:[0xff4d4d,0xff8a80],def:[0x3d8bff,0x80b4ff]}; // 黄=ヒント弾 赤=攻撃 青=防御
 const chests=[];
-function setChest(c){
-  c.item=newAmmo();const col=CC[c.item.cat];
+function paintChest(c){const col=CC[c.item.cat];
   c.box.material.color.setHex(col[0]);c.box.material.emissive.setHex(col[0]);c.box.material.emissive.multiplyScalar(0.3);
   c.beam.material.color.setHex(col[1]);
 }
+function setChest(c){c.item=newAmmo();paintChest(c)}
 for(let i=0,NC=Math.round(10*(S/90)**1.5);i<NC;i++){
   const g=new THREE.Group();
   const box=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.6,0.6),toonMat({color:0xc8962a}));
@@ -603,6 +676,7 @@ function guess(){
   if(gauge<1){flashMsg('ゲージが足りません','#ccc',1);return}
   gauge-=1;const g=gbuf;gbuf='';drawNum();
   const tb=bots[tsel],b=(tb&&tb.st!=='out'&&tb.num===g)?tb:null; // 指定した相手の数字だけを判定する（無敵・消滅中でも当たれば脱落）
+  if(b&&online&&b.remote){netTo(b.remote,{k:'elim'});flashMsg('判定中…','#6f6',1);return} // 脱落は、当てられた側が確認して知らせる
   if(b){
     if(CFG.mode==='pts'){ // ポイント制：当てた相手は新しい数字で、数秒後に復活する
       renewNum(b);b.st='gone';b.gone=RESP;b.g.visible=false;b.frz=0;
@@ -828,15 +902,15 @@ function fire(){
   }
   sfx('lazer1');
   // ヒント弾（無敵・消滅中・脱落済みのボットは素通り）
-  const h0=ray.intersectObjects(targets,false).find(h=>{const b=h.object.userData.bot;return !b||(b.st==='alive'&&b.inv<=0)});
+  const h0=ray.intersectObjects(targets,false).find(h=>{const b=h.object.userData.bot;return !b||(b.st==='alive'&&b.inv<=0&&!b.cl)});
   const b=h0&&h0.object.userData.bot;
-  if(b){addLog(b,a);gauge=Math.min(GMAX,gauge+0.5);drawNum();flashMsg('HIT!','#f44');b.st='gone';b.gone=GONE;b.g.visible=false;b.frz=0}
+  if(b){addLog(b,a);gauge=Math.min(GMAX,gauge+0.5);drawNum();flashMsg('HIT!','#f44');b.st='gone';b.gone=GONE;b.g.visible=false;b.frz=0;if(b.remote){b.goneT=0.4;netTo(b.remote,{k:'hit'})}}
 }
 
 // ===== ボットAI =====
 const PL={isP:true},aX=a=>a===PL?p.x:a.x,aZ=a=>a===PL?p.z:a.z,aY=a=>a===PL?p.y:0;
 const aFwd=a=>a===PL?[-Math.sin(p.yaw),-Math.cos(p.yaw)]:[Math.sin(a.yaw),Math.cos(a.yaw)];
-const aVuln=a=>a===PL?(p.inv<=0&&p.cloak<=0&&!over):(a.st==='alive'&&a.inv<=0); // 弾が効く（無敵・透明中は効かない）
+const aVuln=a=>a===PL?(p.inv<=0&&p.cloak<=0&&!over):(a.st==='alive'&&a.inv<=0&&!a.cl); // 弾が効く（無敵・透明中は効かない）
 const aShown=a=>a===PL?(aVuln(a)&&p.hide<=0):aVuln(a); // 背中の数字が見える
 const aLive=a=>a===PL?!over:a.st!=='out';
 const aNum=a=>a===PL?myNum:a.num,aKey=a=>a===PL?'P':bots.indexOf(a);
@@ -917,6 +991,7 @@ function winCheck(){
 }
 function gameOver(by){
   over=true;cleared=true;sfx('wrong1');
+  if(online)netAll({k:'out',by:by.remote||0});
   msg.innerHTML='あなたの数字 '+myNum+' を '+by.name+' に当てられた…<br>敗北<br>クリックでもう一度';msg.style.display='flex';
   if(document.exitPointerLock)document.exitPointerLock();
 }
@@ -987,8 +1062,9 @@ let started=false,SENS=1;
 try{const v=parseFloat(localStorage.getItem('nh_sens'));if(v>0)SENS=v}catch(e){}
 const homeEl=document.getElementById('home'),hmain=document.getElementById('hmain'),hpanel=document.getElementById('hpanel');
 const HELP='<b>遊び方</b><br>目的：他のプレイヤーの3桁の数字を当てて、全員を脱落させる。背中の数字を読まれると、あなたも脱落します。<br>WASD：移動　Space：ジャンプ（空中でもう一度で二段ジャンプ）　Shift：ステップ（移動中に押す。3秒に1回）<br>マウス／矢印キー：視点　クリックかF：アイテムを使う　ホイール：アイテム選択　Q/E：ヒントの数値変更<br>Tab：判定する相手（色）を選ぶ　数字キー3桁＋Enter：判定（ゲージ1つ消費。2分で1ゲージ／ヒント弾が当たると0.5ゲージ）<br>ヒット＆ブロー（対戦設定でオン）：判定が外れたとき、位置も数字も合っている数（ヒット）と、数字だけ合っている数（ブロー）が分かります。<br>ポイント制：数字を当てられても、数秒後に新しい数字で復活します。当てるたびに1点です。<br>みんなであそぶ：部屋を作り、4文字の部屋コードを友達に伝えます（オンライン版は準備中の機能があります）。<br>M：メモ（相手ごとにページ。移動はOK、アイテムは不可）　Esc：一時停止（ホーム画面に戻れます）<br>宝箱：黄＝ヒント弾、赤＝攻撃、青＝防御。床の色は4つのエリアで少しずつ違います。黄色い床は上下するエレベーター、ピンクの壁は左右に動きます（はさまれると押し出されます）。対戦設定で、背中の数字・ワープ・宝箱の種類・ボット人数・マップの広さを変えられます。光る輪はワープゾーン（同じ色の輪へ移動。3秒間、他の人の数字が見えなくなります）。<br>開始時の15秒間と、復活後の5秒間は無敵で、誰の数字も見えません。';
-const tgb=(k,on,t)=>'<button class="tg'+(on?' on':'')+'" data-k="'+k+'">'+t+'</button>';
+const tgb=(k,on,t,dis)=>'<button class="tg'+(on?' on':'')+'" data-k="'+k+'"'+(dis?' disabled':'')+'>'+t+'</button>';
 let ruleMode='solo';
+function defName(){let n=getName();if(!n){n=randName();setName(n)}return n}
 function nameOk(){const n=(document.getElementById('nname').value||'').trim().slice(0,8)||('プレイヤー'+((Math.random()*90+10)|0));setName(n);NET.name=n;return n}
 function bindMulti(){
   document.getElementById('hmk').onclick=()=>{
@@ -1010,27 +1086,29 @@ function lobbyDraw(){
    +'<div style="font-size:13px;opacity:.8">'+cfgText(c)+'</div>'
    +(NET.host?'<button id="hst" class="go"'+(mem.length<2?' disabled':'')+'>スタート</button>'+(mem.length<2?'<div style="font-size:13px;opacity:.75">2人以上集まるとスタートできます</div>':'')
             :'<div class="rw" style="opacity:.8">ホストがスタートするのを待っています…</div>')
-   +'<button id="hb">退出</button>';
+   +'<div style="margin-top:12px"><button class="sm" id="hb">退出</button></div>';
   const st=document.getElementById('hst');if(st&&mem.length>=2)st.onclick=()=>netSend({t:'start'});
   document.getElementById('hb').onclick=()=>location.reload();
 }
 function ruleDraw(note){
   const C=CFG,cn=['赤＝攻撃','青＝防御'],multi=ruleMode==='multi';
   hpanel.innerHTML='<b>'+(multi?'みんなであそぶ':'1人であそぶ')+'</b>　<span style="opacity:.7">（設定はこの端末に保存されます）</span>'
+   +(multi?'<div class="rw">名前：<input type="text" id="nname" maxlength="8" value="'+defName()+'" placeholder="8文字まで"></div>':'')
    +'<div class="rw">背中の数字：'+tgb('num',C.num,C.num?'あり':'なし')+'</div>'
    +'<div class="rw">ワープ：'+tgb('warp',C.warp,C.warp?'あり':'なし')+'</div>'
    +'<div class="rw">出る宝箱：'+cn.map((t,i)=>tgb('ch'+(i+1),C.ch[i+1],t)).join('')+'</div>'
-   +'<div class="rw">ボットの人数：'+[1,2,3].map(n=>tgb('bots'+n,C.bots===n,n+'人')).join('')+'</div>'
-   +'<div class="rw">ボットの強さ：'+['弱い','ふつう','強い'].map((t,i)=>tgb('diff'+i,C.diff===i,t)).join('')+'</div>'
-   +'<div class="rw">ルール：'+tgb('mode0',C.mode==='surv','サバイバル')+tgb('mode1',C.mode==='pts','ポイント制')+'</div>'
-   +'<div class="rw">制限時間：'+[[0,'なし'],[180,'3分'],[300,'5分'],[600,'10分']].map(([s,t])=>tgb('time'+s,C.time===s,t)).join('')+'</div>'
-   +(C.mode==='pts'?'<div class="rw">先取り点数：'+[3,5,10].map(n=>tgb('goal'+n,C.goal===n,n+'点')).join('')+'</div>':'')
+   +(multi?'<div class="rw">ボットの人数：'+[0,1,2,3].map(n=>tgb('obots'+n,C.obots===n,n+'人'+(n?'（準備中）':''),n>0)).join('')+'</div>'
+          :'<div class="rw">ボットの人数：'+[1,2,3].map(n=>tgb('bots'+n,C.bots===n,n+'人')).join('')+'</div>'
+           +'<div class="rw">ボットの強さ：'+['弱い','ふつう','強い'].map((t,i)=>tgb('diff'+i,C.diff===i,t)).join('')+'</div>'
+           +'<div class="rw">ルール：'+tgb('mode0',C.mode==='surv','サバイバル')+tgb('mode1',C.mode==='pts','ポイント制')+'</div>'
+           +'<div class="rw">制限時間：'+[[0,'なし'],[180,'3分'],[300,'5分'],[600,'10分']].map(([s,t])=>tgb('time'+s,C.time===s,t)).join('')+'</div>'
+           +(C.mode==='pts'?'<div class="rw">先取り点数：'+[3,5,10].map(n=>tgb('goal'+n,C.goal===n,n+'点')).join('')+'</div>':''))
    +'<div class="rw">判定の結果：'+tgb('hb0',!C.hb,'あたり／はずれのみ')+tgb('hb1',C.hb,'ヒット＆ブロー')+'</div>'
    +'<div class="rw">マップの広さ：'+[[90,'標準 90m'],[120,'広い 120m'],[150,'特大 150m']].map(([m,t])=>tgb('map'+m,C.map===m,t)).join('')+'</div>'
-   +'<div style="font-size:13px;opacity:.75">サバイバル：全員を脱落させたら勝ち。ポイント制：数字を当てられても、数秒後に新しい数字で復活し、当てた数で競います（先取り点数か制限時間で終了）。制限時間つきのサバイバルは、「生存」「当てた数」の順で順位が決まります。背中の数字なし：数字は表示されず、ヒントだけで推理します。ヒット＆ブロー：外れたとき、ヒット（数字も位置も合い）とブロー（数字だけ合い）の数が分かります。マップの広さを変えた場合は、スタート時に読み込み直します。</div>'
+   +'<div style="font-size:13px;opacity:.75">'+(multi?'オンラインは今のところ、サバイバル（制限時間なし）で、人どうしの対戦です。ボット入り・ポイント制・制限時間は次のStageで対応します。':'サバイバル：全員を脱落させたら勝ち。ポイント制：数字を当てられても、数秒後に新しい数字で復活し、当てた数で競います（先取り点数か制限時間で終了）。制限時間つきのサバイバルは、「生存」「当てた数」の順で順位が決まります。')
+   +' 背中の数字なし：数字は表示されず、ヒントだけで推理します。ヒット＆ブロー：外れたとき、ヒット（数字も位置も合い）とブロー（数字だけ合い）の数が分かります。マップの広さを変えた場合は、スタート時に読み込み直します。</div>'
    +(note?'<div style="color:#d22">'+note+'</div>':'')
-   +(multi?'<div class="rw">名前：<input type="text" id="nname" maxlength="8" value="'+(getName()||'')+'" placeholder="8文字まで"></div>'
-         +'<div class="rw"><button class="tg go" id="hmk">この設定で部屋を作る</button></div>'
+   +(multi?'<div class="rw"><button class="tg go" id="hmk">この設定で部屋を作る</button></div>'
          +'<div class="rw">または　部屋コード <input type="text" id="ncode" maxlength="4" style="width:5em;text-transform:uppercase"> <button class="tg" id="hjn">部屋に入る</button>　<span style="opacity:.7">（入る人は、部屋を作った人の設定になります）</span></div>'
          :'<button id="hgo" class="go">スタート</button>')
    +'<button id="hb">戻る</button>';
@@ -1049,6 +1127,7 @@ hpanel.addEventListener('click',e=>{
   else if(k==='mode0'||k==='mode1')CFG.mode=k==='mode1'?'pts':'surv';
   else if(k.startsWith('time'))CFG.time=+k.slice(4);
   else if(k.startsWith('goal'))CFG.goal=+k.slice(4);
+  else if(k.startsWith('obots'))CFG.obots=+k.slice(5);
   else if(k.startsWith('bots'))CFG.bots=+k.slice(4);
   else if(k.startsWith('map'))CFG.map=+k.slice(3);
   saveCfg();ruleDraw(note);
@@ -1070,13 +1149,14 @@ const DIFFS=[
   {react:1.1,miss:0.45,spd:7,turn:1.55,ait:0.33,guess:5,rd:0.35,wg:1.4},
   {react:0.5,miss:0.22,spd:8,turn:1.75,ait:0.25,guess:6,rd:0,   wg:1.0}];
 function startGame(prac,onl){ // 開始：自分とボットは15秒間、無敵かつ誰の数字も見えない
-  online=onl===true;practice=prac===true||online;
+  online=onl===true;practice=prac===true;
   if(CFG.map!==S&&!online){ // マップの広さが変わっていたら、ここで保存して読み込み直し、そのまま開始する
     if(saveCfg()){try{sessionStorage.setItem('nh_boot',practice?'p':'s')}catch(e){}hpanel.innerHTML='マップを読み込み直しています…';location.reload();return}
     CFG.map=S;ruleDraw('この環境ではマップの広さを保存できないため、変更できません');return;
   }
   {const D=DIFFS[CFG.diff];REACT=D.react;MISS=D.miss;BSPD=D.spd;TURN=D.turn;AITK=D.ait;BGUESS=D.guess;RREAD=D.rd;WGRACE=D.wg}
   homeEl.style.display='none';started=true;initAudio();
+  if(online)document.getElementById('hback').classList.add('sm');
   try{rd.domElement.requestPointerLock()}catch(e){}
   document.getElementById('psl').value=SENS;document.getElementById('psv').textContent=SENS.toFixed(1);
   if(practice){ // ためす：ボットも宝箱もない。操作確認用に少しだけアイテムを持つ
@@ -1087,7 +1167,9 @@ function startGame(prac,onl){ // 開始：自分とボットは15秒間、無敵
   p.inv=SPAWNT;p.blind=SPAWNT;
   for(const b of bots){b.inv=SPAWNT;b.blind=SPAWNT;b.plate.visible=false}
   startInv=true;
-  bots.forEach((b,i)=>{if(i>=CFG.bots){b.st='out';b.g.visible=false}});drawCnt();
+  if(!online)bots.forEach((b,i)=>{if(i>=Math.max(1,CFG.bots)){b.st='out';b.g.visible=false}});
+  if(online)assignSlots();
+  drawCnt();
 }
 document.getElementById('hs').onclick=()=>homePanel('solo');
 document.getElementById('hback').onclick=e=>{e.stopPropagation();location.reload()};
@@ -1149,6 +1231,7 @@ function loop(t){
   // ボット
   for(const b of bots){
     if(b.st==='out')continue;
+    if(b.remote){remoteStep(b,dt);continue}
     if(b.st==='gone'){
       if((b.gone-=dt)<=0){
         const r=rpos(8);b.x=r[0];b.z=r[1];newTarget(b);b.pt=0;b.path=[];
@@ -1198,20 +1281,21 @@ function loop(t){
     if(c.on){
       c.g.rotation.y+=dt;
       if(ammo.length<MAXAMMO&&Math.hypot(wd(c.x-p.x),wd(c.z-p.z))<1.3&&Math.abs(p.y-c.y)<1.5){
-        c.on=false;c.g.visible=false;c.t=RESPAWN;
-        ammo.push(c.item);drawAmmo();sfx('get1');
+        if(online){if(!c.pend){c.pend=true;setTimeout(()=>{c.pend=false},1500);const ci=chests.indexOf(c);if(NET.host)hostTake(ci,NET.id);else netTo(hostId(),{k:'take',i:ci})}}
+        else{c.on=false;c.g.visible=false;c.t=RESPAWN;ammo.push(c.item);drawAmmo();sfx('get1')}
       }
     }else if((c.t-=dt)<=0){
       spawnChest(c);setChest(c);c.g.visible=true;c.on=true;
+      if(online&&NET.host)netAll(Object.assign({k:'chest',i:chests.indexOf(c)},chestData(c)));
     }
   }
-  for(const b of bots)if(b.st==='alive')b.plate.visible=CFG.num&&b.inv<=0&&p.blind<=0; // 開始・復活直後は誰の数字も見えない
+  for(const b of bots)if(b.st==='alive')b.plate.visible=CFG.num&&b.inv<=0&&p.blind<=0&&!b.cl; // 開始・復活直後は誰の数字も見えない
   if(hitTimer>0){hitTimer-=dt;if(hitTimer<=0)hitEl.style.opacity=0}
   // 世界は円環：すべての物をプレイヤーに最も近い位置に描く
   for(const m of bm){m.position.x=p.x+wd(m.userData.bx-p.x);m.position.z=p.z+wd(m.userData.bz-p.z)}
-  for(const b of bots)b.g.position.set(p.x+wd(b.x-p.x),0,p.z+wd(b.z-p.z));
+  for(const b of bots)b.g.position.set(p.x+wd(b.x-p.x),b.y||0,p.z+wd(b.z-p.z));
   for(const k in NET.ghosts){const o=NET.ghosts[k],a=Math.min(1,dt*12);o.x=wd(o.x+wd(o.tx-o.x)*a);o.z=wd(o.z+wd(o.tz-o.z)*a);o.y+=(o.ty-o.y)*a;let dy=o.tyaw-o.yaw;dy-=Math.round(dy/6.2832)*6.2832;o.yaw+=dy*a;o.g.position.set(p.x+wd(o.x-p.x),o.y,p.z+wd(o.z-p.z));o.g.rotation.y=o.yaw+Math.PI}
-  if(online&&NET.on){NET.tq-=dt;if(NET.tq<=0){NET.tq=0.066;netSend({t:'pos',x:+p.x.toFixed(2),z:+p.z.toFixed(2),y:+p.y.toFixed(2),yaw:+p.yaw.toFixed(3)})}}
+  if(online&&NET.on){NET.tq-=dt;if(NET.tq<=0){NET.tq=0.066;netSend({t:'pos',x:+p.x.toFixed(2),z:+p.z.toFixed(2),y:+p.y.toFixed(2),yaw:+p.yaw.toFixed(3),f:(p.inv>0?1:0)|(p.cloak>0?2:0)|(over?8:0)})}}
   for(const c of chests)c.g.position.set(p.x+wd(c.x-p.x),c.y+Math.sin(Date.now()/300+c.x)*0.12,p.z+wd(c.z-p.z));
   for(const w of warps){w.g.position.set(p.x+wd(w.x-p.x),w.y,p.z+wd(w.z-p.z));w.g.children[0].scale.setScalar(1+Math.sin(Date.now()/250)*0.08)}
   drawMini();
