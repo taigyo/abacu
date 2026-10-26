@@ -391,7 +391,7 @@ function updateDyn(tm){
     const mx=wd(b.cx-px),mz=wd(b.cz-pz);
     pushOut(p,p.y,R,b,mx,mz);
     if(hit(p.x,p.z,p.y,R)){const r=rpos(8);p.x=r[0];p.z=r[1];p.y=0;p.vy=0}
-    for(const q of bots)if(q.st==='alive'){
+    for(const q of bots)if(q.st==='alive'&&!q.remote){
       pushOut(q,0,0.5,b,mx,mz);
       if(hit(q.x,q.z,0,0.5)){const r=rpos(8);q.x=r[0];q.z=r[1]}
     }
