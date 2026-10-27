@@ -2,7 +2,7 @@
 // ws は { send(文字列), close() } を持つ物なら何でもよい。
 export const MAX_PLAYERS = 4;
 const COLORS = ["#ff6b9d", "#2ec4b6", "#ffd23f", "#7fb0ff"];
-const MAX_MSG = 2000;
+const MAX_MSG = 4000;
 
 const num = (v) => typeof v === "number" && Number.isFinite(v);
 const cleanName = (n) => String(n || "").replace(/[<>&"'\u0000-\u001f]/g, "").trim().slice(0, 8) || "プレイヤー";
@@ -19,6 +19,7 @@ export function cleanCfg(s) {
   if ([0, 1, 2, 3].includes(s.obots)) c.obots = s.obots;
   if ([0, 1, 2].includes(s.diff)) c.diff = s.diff;
   if (typeof s.hb === "boolean") c.hb = s.hb;
+  if (Number.isInteger(s.chests) && s.chests >= 1 && s.chests <= 10) c.chests = s.chests;
   if (s.mode === "surv" || s.mode === "pts") c.mode = s.mode;
   if ([0, 180, 300, 600].includes(s.time)) c.time = s.time;
   if ([3, 5, 10].includes(s.goal)) c.goal = s.goal;
@@ -84,14 +85,10 @@ export class RoomCore {
         this.cfg = cleanCfg(d.cfg);
         this.broadcast({ t: "cfg", cfg: this.cfg }, id);
         break;
-      case "num": { // 自分の数字（3桁）を決める。同じ数字の人がいたら断る
+      case "num": { // 自分の数字（3桁）を決める。同じ数字の人がいてもよい
         if (this.phase !== "lobby") break;
         if (d.n === null) { m.num = null; this.send(m, { t: "numres", ok: true, n: null }); this.broadcast({ t: "members", members: this.list() }); break; }
         if (typeof d.n !== "string" || !/^\d{3}$/.test(d.n)) break;
-        if ([...this.members.values()].some((o) => o !== m && o.num === d.n)) {
-          this.send(m, { t: "numres", ok: false, m: "同じ数字の人がいます。別の数字にしてください" });
-          break;
-        }
         m.num = d.n;
         this.send(m, { t: "numres", ok: true, n: d.n });
         this.broadcast({ t: "members", members: this.list() });
