@@ -37,9 +37,10 @@ export class RoomCore {
     this.phase = "empty"; // empty → lobby → playing
     this.hostId = null;
     this.nextId = 1;
+    this.votes = new Set(); // 「再戦」を押した人
   }
   list() {
-    return [...this.members.values()].map((m) => ({ id: m.id, name: m.name, color: m.color, host: m.id === this.hostId }));
+    return [...this.members.values()].map((m) => ({ id: m.id, name: m.name, color: m.color, host: m.id === this.hostId, ready: !!m.num }));
   }
   send(m, obj) {
     try { m.ws.send(JSON.stringify(obj)); } catch (e) { /* 切れた相手には送れないだけ */ }
@@ -61,7 +62,7 @@ export class RoomCore {
     const used = new Set([...this.members.values()].map((m) => m.color));
     const color = COLORS.find((c) => !used.has(c)) || COLORS[0];
     const id = this.nextId++;
-    const m = { id, ws, name: cleanName(name), color, last: 0 };
+    const m = { id, ws, name: cleanName(name), color, last: 0, num: null };
     this.members.set(id, m);
     if (this.hostId === null) this.hostId = id;
     this.send(m, { t: "welcome", id, host: id === this.hostId, room: null, cfg: this.cfg, members: this.list(), now: this.now() });
@@ -83,11 +84,42 @@ export class RoomCore {
         this.cfg = cleanCfg(d.cfg);
         this.broadcast({ t: "cfg", cfg: this.cfg }, id);
         break;
-      case "start":
-        if (id !== this.hostId || this.phase !== "lobby" || this.members.size < 2 || !this.cfg) break;
-        this.phase = "playing";
-        this.broadcast({ t: "start", cfg: this.cfg, t0: this.now() + this.startDelay, members: this.list() });
+      case "num": { // 自分の数字（3桁）を決める。同じ数字の人がいたら断る
+        if (this.phase !== "lobby") break;
+        if (d.n === null) { m.num = null; this.send(m, { t: "numres", ok: true, n: null }); this.broadcast({ t: "members", members: this.list() }); break; }
+        if (typeof d.n !== "string" || !/^\d{3}$/.test(d.n)) break;
+        if ([...this.members.values()].some((o) => o !== m && o.num === d.n)) {
+          this.send(m, { t: "numres", ok: false, m: "同じ数字の人がいます。別の数字にしてください" });
+          break;
+        }
+        m.num = d.n;
+        this.send(m, { t: "numres", ok: true, n: d.n });
+        this.broadcast({ t: "members", members: this.list() });
         break;
+      }
+      case "start": {
+        if (id !== this.hostId || this.phase !== "lobby" || this.members.size < 2 || !this.cfg) break;
+        if ([...this.members.values()].some((o) => !o.num)) { this.send(m, { t: "notice", m: "全員が数字を決めるとスタートできます" }); break; }
+        this.phase = "playing";
+        this.votes.clear();
+        const nums = {};
+        for (const o of this.members.values()) nums[o.id] = o.num;
+        this.broadcast({ t: "start", cfg: this.cfg, t0: this.now() + this.startDelay, members: this.list(), nums });
+        break;
+      }
+      case "rematch": // 全員が押したら、同じ設定で待合室（数字の決め直し）へ戻る
+        if (this.phase !== "playing") break;
+        this.votes.add(id);
+        this.broadcast({ t: "rematch", votes: this.votes.size, total: this.members.size });
+        this.checkRematch();
+        break;
+      case "close": { // 部屋を解散して、全員を終わらせる
+        this.broadcast({ t: "closed" });
+        const all = [...this.members.values()];
+        this.reset();
+        for (const o of all) { try { o.ws.close(); } catch (e) { /* 切れた */ } }
+        break;
+      }
       case "pos": { // 位置は、そのまま他の人へ中継するだけ（1秒に40回まで）
         if (this.phase !== "playing" || !num(d.x) || !num(d.z) || !num(d.y) || !num(d.yaw)) break;
         const t = this.now();
@@ -109,11 +141,20 @@ export class RoomCore {
         break;
     }
   }
+  checkRematch() {
+    if (this.phase !== "playing" || this.members.size === 0 || this.votes.size < this.members.size) return;
+    this.phase = "lobby";
+    this.votes.clear();
+    for (const o of this.members.values()) o.num = null;
+    this.broadcast({ t: "lobby", members: this.list() });
+  }
   leave(id) {
+    this.votes.delete(id);
     if (!this.members.delete(id)) return;
     if (this.members.size === 0) { this.reset(); return; }
     if (id === this.hostId) this.hostId = Math.min(...this.members.keys()); // 次に入った人がホストを引き継ぐ
     this.broadcast({ t: "left", id });
     this.broadcast({ t: "members", members: this.list() });
+    this.checkRematch();
   }
 }
