@@ -613,7 +613,7 @@ const p={x:0,z:0,y:0,vy:0,ground:true,yaw:0,pitch:0,inv:0,spd:0,frz:0,jl:2,blind
 const binds={fwd:'KeyW',back:'KeyS',left:'KeyA',right:'KeyD',jump:'Space',fire:'KeyF',prev:'KeyQ',next:'KeyE'};
 addEventListener('keydown',e=>{
   if(!started||over||ending)return;
-  if(e.code==='KeyP'){if(document.exitPointerLock)document.exitPointerLock();return} // Pキーで一時停止（Escより、戻りやすい）
+  if(e.code==='KeyP'){selfExit=true;if(document.exitPointerLock)document.exitPointerLock();return} // Pキーで一時停止（Escより、戻りやすい）
   keys[e.code]=true;if(e.code==='Space'||e.code==='Tab'||e.code.startsWith('Arrow'))e.preventDefault();
   if(e.repeat)return;
   if(e.code===binds.jump&&msg.style.display==='none'&&p.frz<=0&&p.jl>0){p.vy=8.5*(p.jmp>0?1.35:1);p.jl--;p.ground=false}
@@ -631,22 +631,29 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>keys[e.code]=false);
 const msg=document.getElementById('msg'),hitEl=document.getElementById('hit');
 let usedLock=false,drag=false,lastShot=0,hitTimer=0;
-let lockFails=0,dragOnly=false;
-function lockTry(){try{const r=rd.domElement.requestPointerLock();if(r&&r.catch)r.catch(lockFail)}catch(e){lockFail()}}
-function lockFail(){ // ブラウザがEsc直後の再ロックを断った：画面を閉じずに、もう一度クリックしてもらう。2回続けて失敗したら、ドラッグ操作で続ける
-  if(++lockFails>=2){dragOnly=true;msg.style.display='none';flashMsg('視点はドラッグで動かせます','#9ef',3);return}
-  document.getElementById('mtc').textContent='もう一度クリックしてください（視点操作に戻します）';
+let dragOnly=false,tries=0,userFails=0,lastExit=0,selfExit=false,lastFailAt=0,lockTimer=0;
+const MTC_ASK='もう一度クリックしてください（視点操作に戻します）';
+// Escで抜けた直後は、ブラウザが再ロックを断ることがある。少し待ってから取り直し、失敗しても自動で2回まで再試行する
+function lockTry(){clearTimeout(lockTimer);const wait=Math.max(0,1300-(performance.now()-lastExit));
+  if(wait>0){document.getElementById('mtc').textContent='視点を戻しています…';lockTimer=setTimeout(lockGo,wait)}else lockGo()}
+function lockGo(){if(document.pointerLockElement)return;try{const r=rd.domElement.requestPointerLock();if(r&&r.catch)r.catch(lockFail)}catch(e){lockFail()}}
+function lockFail(){ // 1回の失敗で、Promiseのcatchとpointerlockerrorの両方が呼ばれるので、200ms以内は1回として数える
+  const now=performance.now();if(now-lastFailAt<200||document.pointerLockElement)return;lastFailAt=now;
+  if(++tries<=2){lockTimer=setTimeout(lockGo,1100);return}
+  tries=0;
+  if(++userFails>=3){dragOnly=true;msg.style.display='none';flashMsg('この環境では視点ロックが使えないため、ドラッグで動かします','#9ef',4);return}
+  document.getElementById('mtc').textContent=MTC_ASK;
 }
 document.addEventListener('pointerlockerror',lockFail);
 msg.addEventListener('click',()=>{
   if(cleared){location.reload();return}
   if(bootMsg){bootMsg=false;document.getElementById('mtt').textContent=online?'メニュー（オンライン中は止まりません）':'一時停止';document.getElementById('mtc').textContent=online?'クリックで操作に戻る':'クリックで再開'}
   initAudio();
-  lockTry(); // 画面は、ロックできたときにだけ閉じる
+  tries=0;lockTry(); // 画面は、ロックできたときにだけ閉じる
 });
 document.addEventListener('pointerlockchange',()=>{
-  if(document.pointerLockElement){usedLock=true;lockFails=0;msg.style.display='none'}
-  else if(usedLock&&!memoOpen&&!ending){msg.style.display='flex'}
+  if(document.pointerLockElement){usedLock=true;tries=0;userFails=0;clearTimeout(lockTimer);msg.style.display='none';document.getElementById('mtc').textContent=online?'クリックで操作に戻る':'クリックで再開'}
+  else{lastExit=selfExit?0:performance.now();selfExit=false;if(usedLock&&!memoOpen&&!ending)msg.style.display='flex'}
 });
 rd.domElement.addEventListener('mousedown',()=>{
   if(document.pointerLockElement)fire();else drag=true;
@@ -818,7 +825,7 @@ function memoSwitch(old){
 }
 function toggleMemo(){
   memoOpen=!memoOpen;memoEl.style.display=memoOpen?'block':'none';drawing=false;mcur.style.display='none';
-  if(memoOpen){memoHead();if(document.pointerLockElement)document.exitPointerLock()}
+  if(memoOpen){memoHead();if(document.pointerLockElement){selfExit=true;document.exitPointerLock()}}
   else if(usedLock){try{const r=rd.domElement.requestPointerLock();if(r&&r.catch)r.catch(()=>{msg.style.display='flex'})}catch(e){}}
 }
 
@@ -1501,15 +1508,20 @@ requestAnimationFrame(loop);
   const measure=()=>{const cs=getComputedStyle(h1),m=document.createElement('canvas').getContext('2d');
     m.font='italic 900 100px '+(cs.fontFamily||'sans-serif');
     sms.forEach(l=>{const w=m.measureText(l.textContent).width/100+.08;l.style.setProperty('--w',w.toFixed(3)+'em')})};
-  // 雲：丸と横長の楕円を混ぜた、毎回ちがう形。輪郭は不透明で描くので内側の線は見えない
-  const mkCloud=()=>{const w=30+430*R()*R(),n=3+(R()*6|0),ps=[];
-    for(let i=0;i<n;i++){const r=w*(.07+R()*R()*.33),el=R()<.35,rx=el?r*(1.5+R()*1.6):r,ry=el?r*(.45+R()*.4):r;ps.push({x:(R()-.5)*w,y:-ry*(.5+R()*.7),rx,ry})}
-    if(R()<.75){const ry=w*(.06+R()*.07);ps.push({x:(R()-.5)*w*.3,y:-ry,rx:w*(.3+R()*.3),ry})}
+  // 雲：決まった形（幅1・地面が y=0 の座標）をもとに、位置と大きさだけを少しゆらす。形そのものは崩れない
+  const TPL=[
+    [[0,-.07,.5,.09],[-.28,-.15,.17,.17],[-.02,-.27,.24,.24],[.26,-.16,.18,.18]],
+    [[0,-.06,.5,.08],[-.3,-.12,.13,.12],[-.1,-.2,.17,.17],[.14,-.17,.15,.15],[.34,-.1,.12,.11]],
+    [[0,-.07,.38,.08],[-.18,-.18,.17,.17],[.12,-.2,.2,.2],[-.02,-.36,.2,.2],[.27,-.1,.12,.1]],
+    [[0,-.05,.5,.06],[-.15,-.11,.28,.07],[.18,-.12,.22,.07]],
+    [[0,-.08,.4,.08],[-.1,-.2,.2,.2],[.15,-.15,.16,.16]]];
+  const mkCloud=()=>{const w=40+420*R()*R(),fl=R()<.5?-1:1,jt=()=>(R()-.5)*.06,js=()=>1+(R()-.5)*.16,sy=1+(R()-.5)*.2;
+    const ps=TPL[R()*TPL.length|0].map(([x,y,rx,ry])=>({x:(x+jt())*fl,y:(y+jt()*.3)*sy,rx:rx*js(),ry:ry*js()*sy}));
     const layer=w<110?0:w<240?1:2;
-    return{x:R()*1400,y:60+R()*640,w,ps,layer,v:8+w*.1+R()*10,col:['#c7b8ff','#ffd0e6',CREAM][layer],e:Math.max(2,Math.min(4,w*.04)),mn:Math.min(...ps.map(q=>q.x-q.rx))}};
+    return{x:R()*1400,y:60+R()*640,w,ps,layer,ph:R()*6.28,v:8+w*.1+R()*10,col:['#c7b8ff','#ffd0e6',CREAM][layer],e:Math.max(2,Math.min(4,w*.04))}};
   const clouds=Array.from({length:14},mkCloud);
-  const drawCloud=c=>{for(const pass of[0,1]){const e=pass?0:c.e;bx.fillStyle=pass?c.col:INK;bx.beginPath();
-    for(const q of c.ps){bx.moveTo(c.x+q.x+q.rx+e,c.y+q.y);bx.ellipse(c.x+q.x,c.y+q.y,q.rx+e,q.ry+e,0,0,6.283)}bx.fill()}};
+  const drawCloud=c=>{const k=c.w*(1+.03*Math.sin(c.ph));for(const pass of[0,1]){const e=pass?0:c.e;bx.fillStyle=pass?c.col:INK;bx.beginPath();
+    for(const q of c.ps){const X=c.x+q.x*k,Y=c.y+q.y*k,rx=q.rx*k+e;bx.moveTo(X+rx,Y);bx.ellipse(X,Y,rx,q.ry*k+e,0,0,6.283)}bx.fill()}};
   const smoke=['255,107,157','46,196,182','255,210,63','150,110,255'].flatMap((c,i)=>[0,1,2].map(j=>({c,x:R()*1400,y:R()*800,r:130+R()*140,vx:(R()-.5)*14,vy:-(6+R()*10),p:R()*6.28+i+j})));
   const beams=[],crack=[],shards=[],flashes=[];
   const drawBeam=(g2,b)=>{const x0=b.x-b.d*b.len,g=g2.createLinearGradient(x0,0,b.x,0),k=b.k||1;
@@ -1573,7 +1585,7 @@ requestAnimationFrame(loop);
       const r=m.r*(1+.12*Math.sin(m.p)),g=bx.createRadialGradient(m.x,m.y,0,m.x,m.y,r);
       g.addColorStop(0,'rgba('+m.c+',.22)');g.addColorStop(1,'rgba('+m.c+',0)');bx.fillStyle=g;bx.fillRect(m.x-r,m.y-r,r*2,r*2)}
     bx.globalCompositeOperation='source-over';
-    for(const c of clouds){c.x+=c.v*dt;if(c.x+c.mn>W)Object.assign(c,mkCloud(),{x:-300-R()*200})}
+    for(const c of clouds){c.x+=c.v*dt;c.ph+=dt*.3;if(c.x-c.w*.55>W){Object.assign(c,mkCloud());c.x=-c.w*.6-R()*200}}
     for(let L=0;L<4;L++){
       for(const b of beams)if(!b.front&&b.layer===L)drawBeam(bx,b);
       if(L<3)for(const c of clouds)if(c.layer===L)drawCloud(c)}
