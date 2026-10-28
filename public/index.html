@@ -107,6 +107,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 @keyframes bpop{0%{transform:scale(0) skewX(-5deg)}100%{transform:skewX(-5deg)}}
 #hmain:not(.menu) #hs,#hmain:not(.menu) #hr,#hmain:not(.menu) #hh,#hmain:not(.menu) #hc,#hmain.menu #hbang{display:none}
 #home button.mpop{animation:bpop .45s cubic-bezier(.2,1.7,.4,1) backwards}
+#hdim{position:absolute;inset:0;background:#05020f;opacity:0;pointer-events:none;z-index:0;transition:opacity 3.2s ease-out}
+#hdim.on{opacity:.6;transition:none}
 #hmain.pre>*{display:none}
 #hmain:not(.said) p{display:none}
 #hmain.said p{animation:pin .7s ease both}
@@ -304,24 +306,59 @@ function startOnline(){
   NET.on=true;
 }
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0xa8e0ff);
-scene.fog=new THREE.Fog(0xa8e0ff,15,48);
+// ===== 夜の色味（ホーム画面に合わせる）。ここの色を変えれば、雰囲気を調整できます =====
+const NIGHT={horizon:0x8a3f8f,mid:0x33186b,top:0x150f3a,hemiSky:0xb9b0ff,hemiGround:0x4a3f86,hemiI:1.0,moon:0xdfe4ff,moonI:0.8,emi:0.22};
+scene.background=new THREE.Color(NIGHT.horizon);
+scene.fog=new THREE.Fog(NIGHT.horizon,15,48);
 const cam=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,300);
 cam.rotation.order='YXZ';
 const rd=new THREE.WebGLRenderer({antialias:true});
 rd.setSize(innerWidth,innerHeight);
 document.body.appendChild(rd.domElement);
-scene.add(new THREE.HemisphereLight(0xfff2e0,0x7a8fb0,0.78));
-const sun=new THREE.DirectionalLight(0xfff0d0,0.95);
+scene.add(new THREE.HemisphereLight(NIGHT.hemiSky,NIGHT.hemiGround,NIGHT.hemiI));
+const sun=new THREE.DirectionalLight(NIGHT.moon,NIGHT.moonI);
 sun.position.set(30,50,20);scene.add(sun);
 // アニメ調：3段階のトゥーンシェーディング＋輪郭線
 const TG=new THREE.DataTexture(new Uint8Array([85,160,255]),3,1,THREE.LuminanceFormat);
 TG.minFilter=TG.magFilter=THREE.NearestFilter;TG.generateMipmaps=false;TG.needsUpdate=true;
-const toonMat=o=>new THREE.MeshToonMaterial(Object.assign({gradientMap:TG},o));
+const toonMat=o=>{const m=new THREE.MeshToonMaterial(Object.assign({gradientMap:TG},o));if(o.color!==undefined&&!o.map){m.emissive=new THREE.Color(o.color);m.emissiveIntensity=NIGHT.emi}return m}; // 夜でも色が沈みすぎないよう、少しだけ自分で光らせる
 const OLM=new THREE.LineBasicMaterial({color:0x2b2250});
 
+// ===== 夜空：グラデーション・星・流れる雲。それと、弾が当たったときの破片 =====
+const skyG=new THREE.SphereGeometry(250,24,14),skyC=[];
+{const pos=skyG.attributes.position,cH=new THREE.Color(NIGHT.horizon),cM=new THREE.Color(NIGHT.mid),cT=new THREE.Color(NIGHT.top),c=new THREE.Color();
+  for(let i=0;i<pos.count;i++){const t=pos.getY(i)/250;if(t<=0)c.copy(cH);else if(t<.3)c.copy(cH).lerp(cM,t/.3);else c.copy(cM).lerp(cT,Math.min(1,(t-.3)/.5));skyC.push(c.r,c.g,c.b)}}
+skyG.setAttribute('color',new THREE.Float32BufferAttribute(skyC,3));
+const sky=new THREE.Mesh(skyG,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}));sky.renderOrder=-10;scene.add(sky);
+const stars=(()=>{const a=[];for(let i=0;i<220;i++){const u=Math.random()*6.283,v=.1+Math.random()*.9,r=Math.sqrt(1-v*v);a.push(Math.cos(u)*r*240,v*240,Math.sin(u)*r*240)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));
+  const m=new THREE.Points(g,new THREE.PointsMaterial({color:0xfff4dc,size:2.4,sizeAttenuation:false,fog:false,depthWrite:false}));scene.add(m);return m})();
+const skyClouds=new THREE.Group();scene.add(skyClouds);
+{const sg=new THREE.SphereGeometry(1,10,8),ink=new THREE.MeshBasicMaterial({color:0x2b2250,side:THREE.BackSide,fog:false}),mats=[0xfff0f6,0xe3d6ff,0xffd9ec].map(c=>new THREE.MeshBasicMaterial({color:c,fog:false}));
+  const puff=(g,mat,x,y,z,sx,sy,sz)=>{const o=new THREE.Mesh(sg,ink);o.position.set(x,y,z);o.scale.set(sx*1.07,sy*1.07,sz*1.07);g.add(o);const m=new THREE.Mesh(sg,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);g.add(m)};
+  for(let i=0;i<14;i++){const g=new THREE.Group(),mat=mats[i%3],s=14+Math.random()*30;
+    puff(g,mat,0,0,0,s*1.8,s*.45,s*.9);puff(g,mat,-s*.6,s*.35,0,s*.7,s*.6,s*.7);puff(g,mat,s*.15,s*.55,0,s*.9,s*.8,s*.85);puff(g,mat,s*.8,s*.3,0,s*.6,s*.5,s*.6);
+    const a=i/14*6.283+Math.random()*.4,r=110+Math.random()*90;g.position.set(Math.cos(a)*r,34+Math.random()*40,Math.sin(a)*r);g.rotation.y=Math.random()*6.28;skyClouds.add(g)}}
+function updSky(dt){sky.position.copy(cam.position);stars.position.copy(cam.position);skyClouds.position.set(cam.position.x,0,cam.position.z);skyClouds.rotation.y+=dt*.012}
+// 破片：弾が当たった壁・相手から、色つきのカケラが飛び散る
+const SHARDS=[],SHM={},shGeo=new THREE.TetrahedronGeometry(0.17,0),shMat=c=>SHM[c]||(SHM[c]=new THREE.MeshBasicMaterial({color:c}));
+function shatter(pos,color,n,nrm){
+  for(let i=0;i<n;i++){
+    const m=new THREE.Mesh(shGeo,shMat(i%2?color:0xfff4dc));m.position.copy(pos);
+    let vx=Math.random()-.5,vy=Math.random()*.9,vz=Math.random()-.5;
+    if(nrm){vx+=nrm.x*1.2;vy+=nrm.y*1.2;vz+=nrm.z*1.2}
+    const sp=3+Math.random()*6,l=Math.hypot(vx,vy,vz)||1,life=.6+Math.random()*.6,s0=.6+Math.random();
+    m.scale.setScalar(s0);m.rotation.set(Math.random()*6,Math.random()*6,Math.random()*6);scene.add(m);
+    SHARDS.push({m,vx:vx/l*sp,vy:vy/l*sp,vz:vz/l*sp,vr:(Math.random()-.5)*12,t:life,life,s0});
+  }
+  while(SHARDS.length>180){scene.remove(SHARDS.shift().m)}
+}
+function updShards(dt){for(let i=SHARDS.length-1;i>=0;i--){const o=SHARDS[i];o.t-=dt;if(o.t<=0){scene.remove(o.m);SHARDS.splice(i,1);continue}
+  o.vy-=18*dt;const q=o.m.position;q.x+=o.vx*dt;q.y+=o.vy*dt;q.z+=o.vz*dt;if(q.y<.05){q.y=.05;if(o.vy<0)o.vy*=-.35}
+  o.m.rotation.x+=o.vr*dt;o.m.rotation.z+=o.vr*dt;o.m.scale.setScalar(o.s0*Math.max(.02,o.t/o.life))}}
+
 const S=CFG.map,H=S/2,MS2=(S/90)**2,DEN=S>90?1.3:1,wd=v=>v-S*Math.round(v/S); // 世界は端がつながっている（円環）
-const QC=[['#86d17a','#a0d673'],['#74cfa0','#86c6cc']]; // [z偶奇][x偶奇]。floor(座標/45)の偶奇で4エリア
+const QC=[['#5b73c9','#6d85d8'],['#4a9bc4','#6b90d2']]; // [z偶奇][x偶奇]。floor(座標/45)の偶奇で4エリア
 const groundTex=(()=>{
   const c=document.createElement('canvas');c.width=c.height=2;const g=c.getContext('2d');
   for(let cy=0;cy<2;cy++)for(let cx=0;cx<2;cx++){g.fillStyle=QC[1-cy][1-cx];g.fillRect(cx,cy,1,1)}
@@ -330,7 +367,7 @@ const groundTex=(()=>{
 })();
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),toonMat({color:0xffffff,map:groundTex}));
 ground.rotation.x=-Math.PI/2;scene.add(ground);
-const grid=new THREE.GridHelper(100,50,0x6fbf6a,0x6fbf6a);
+const grid=new THREE.GridHelper(100,50,0x8a82e0,0x8a82e0);
 grid.position.y=0.02;scene.add(grid);
 
 const boxes=[],targets=[],bm=[];
@@ -864,7 +901,7 @@ const SND={
 const VOL={hover1:0.3,hover3:0.3,click1:0.7,click2:0.7,shattering1:0.8,shattering2:0.8,shattering3:0.8,lazer1:0.6,lazer2:0.6,powerup1:0.8,warp1:0.6,step1:0.25,explosion1:0.7,correct1:0.9,get1:0.75,wrong1:0.7};
 let BGMV=0.5,SEV=1;try{const a=parseFloat(localStorage.getItem('nh_bgmv'));if(a>=0&&a<=1)BGMV=a;const b=parseFloat(localStorage.getItem('nh_sev'));if(b>=0&&b<=1)SEV=b}catch(e){}
 const bgmEls={};let bgmWant=null; // BGMは別ファイル（bgm1.mp3＝ホーム、bgm2.mp3＝バトル）をループ再生。ブラウザの制限で、最初のクリックまでは鳴らない
-const bgmEl=k=>bgmEls[k]||(bgmEls[k]=Object.assign(new Audio(k+'.mp3'),{loop:true,preload:'none',volume:BGMV*0.6}));
+const bgmEl=k=>bgmEls[k]||(bgmEls[k]=Object.assign(new Audio('bgm/'+k+'.mp3'),{loop:true,preload:'none',volume:BGMV*0.6}));
 function bgmApply(){for(const k of['bgm1','bgm2']){const e=bgmEls[k]||(k===bgmWant?bgmEl(k):null);if(!e)continue;
   if(k===bgmWant){e.volume=BGMV*0.6;if(e.paused){const r=e.play();if(r&&r.catch)r.catch(()=>{})}}else if(!e.paused)e.pause()}}
 function bgmSet(k){if(bgmWant===k)return;bgmWant=k;if(k==='bgm2'){try{bgmEl(k).currentTime=0}catch(x){}}bgmApply()}
@@ -1028,6 +1065,8 @@ function fire(){
   // ヒント弾（無敵・消滅中・脱落済みのボットは素通り）
   const h0=ray.intersectObjects(targets,false).find(h=>{const b=h.object.userData.bot;return !b||(b.st==='alive'&&b.inv<=0&&!b.cl)});
   const b=h0&&h0.object.userData.bot;
+  if(h0){const nm=h0.face?h0.face.normal.clone().transformDirection(h0.object.matrixWorld):null,col=b?b.color:(h0.object.material&&h0.object.material.color?h0.object.material.color.getHex():0xffffff);shatter(h0.point,col,b?16:9,nm)}
+  else{const hg=ray.intersectObject(ground,false)[0];if(hg&&hg.distance<70)shatter(hg.point,0x9fa8ff,5,new THREE.Vector3(0,1,0))}
   if(b){addLog(b,a);gauge=Math.min(GMAX,gauge+0.5);drawNum();flashMsg('HIT!','#f44');b.st='gone';b.gone=GONE;b.g.visible=false;b.frz=0;if(b.remote){b.goneT=0.4;netTo(b.remote,{k:'hit'})}}
 }
 
@@ -1207,6 +1246,7 @@ function botKill(t,by){ // 数字を当てられたら無条件で脱落（ポ�
 }
 function botHit(t,by){ // ヒント弾が当たる：消えてランダム位置で再出現、数秒無敵
   if(t===PL){const r=farFrom(PL);p.x=r[0];p.z=r[1];p.y=0;p.vy=0;p.inv=INV;p.blind=INV;p.frz=0;p.stT=0;flashMsg(by.name+'に撃たれた！','#f66',1.5);return}
+  shatter(new THREE.Vector3(p.x+wd(t.x-p.x),1,p.z+wd(t.z-p.z)),t.color,14,null);
   t.st='gone';t.gone=GONE;t.g.visible=false;t.frz=0;
 }
 function botThink(b,dt){
@@ -1417,7 +1457,7 @@ function loop(t){
   const dt=Math.min(0.05,(t-last)/1000)*timeScale;last=t;
   if(!started||(msg.style.display!=='none'&&!online)){rd.render(scene,cam);requestAnimationFrame(loop);return}
   if(online)gt=netNow()/1000;else gt+=dt;
-  updateDyn(gt);
+  updateDyn(gt);updSky(dt);updShards(dt);
   // 視点操作がロックされていない状態（ドラッグ操作になってしまう）を防ぐ：ロックが外れていたら、メニューを出す
   if(usedLock&&!dragOnly&&!document.pointerLockElement&&msg.style.display==='none'&&!memoOpen&&!ending&&!over)msg.style.display='flex';
   if(CFG.time>0&&!practice&&!over){matchT-=dt;if(matchT<=0)finish('time')}
@@ -1507,7 +1547,7 @@ function loop(t){
       b.yaw+=Math.max(-TURN*dt,Math.min(TURN*dt,da));
     }
     b.g.rotation.y=b.yaw;
-    b.mat.emissive.setHex(b.frz>0?0x2255ff:0);
+    b.mat.emissive.setHex(b.frz>0?0x2255ff:b.color);b.mat.emissiveIntensity=b.frz>0?1:NIGHT.emi;
   }
   for(const c of chests){
     if(c.on){
@@ -1547,6 +1587,7 @@ requestAnimationFrame(loop);
   const mk=z=>{const c=document.createElement('canvas');c.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:'+z;home.insertBefore(c,home.firstChild);return c};
   const back=mk(0),front=mk(2),bx=back.getContext('2d'),fx=front.getContext('2d');
   if(!bx||!fx)return;
+  const dim=document.createElement('div');dim.id='hdim';home.insertBefore(dim,back.nextSibling); // 「!」を押してヒビが入るまで背景を少し暗くし、BGMと一緒に明るくする
   const INK='#2b2250',SH='rgba(43,34,80,.85)',CREAM='#fff4dc',R=Math.random,COLS=['#ff6b9d','#2ec4b6','#ffd23f',CREAM];
   let W=0,H=0,dpr=1;
   const fit=()=>{const w=home.clientWidth,h=home.clientHeight,d=Math.min(2,window.devicePixelRatio||1);
@@ -1584,6 +1625,7 @@ requestAnimationFrame(loop);
       if(depth<2&&pts.length>2&&R()<.28)mkCrack(px,py,a+(R()<.5?-1:1)*(.5+R()*.6),(budget-used)*(.4+R()*.4),sc,depth+1)}
     let tot=0;const cum=[0];for(let i=1;i<pts.length;i++){tot+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);cum.push(tot)}
     crack.push({pts,cum,tot,g:0,t:1,lw:Math.max(1.5,3*sc),clip:curClip})};
+  const gone=o=>o.clip&&o.clip.owner&&!o.clip.owner.offsetParent; // 持ち主のボタンが消えたら、ヒビ・破片も消す
   const clipTo=pl=>{fx.beginPath();pl.forEach(([x,y],i)=>i?fx.lineTo(x,y):fx.moveTo(x,y));fx.closePath();fx.clip()};
   let curClip=null;
   const burst=(x,y,sc,clip)=>{curClip=clip||null; // sc=1：ロゴ用（大）、0.2：ボタン用（小）
@@ -1606,16 +1648,16 @@ requestAnimationFrame(loop);
     const t0=h1.getBoundingClientRect().top;h1.style.transition='none';h1.style.translate='0 0';fn();
     const d=t0-h1.getBoundingClientRect().top;h1.style.translate='0 '+d+'px';void h1.offsetWidth;
     h1.style.transition='translate .9s cubic-bezier(.22,.8,.2,1)';h1.style.translate='0 0'};
-  const setFin=(bgm)=>{if(bgm)bgmSet('bgm1');measure();hmain.classList.remove('pre');Ls.forEach(l=>{l.classList.remove('pop','in','spin','lhit');if(l.classList.contains('sm'))l.classList.add('fin')});if(bang)bang.textContent='!';hmain.classList.add('said','menu')};
+  const setFin=(bgm)=>{dim.style.transition='none';dim.classList.remove('on');void dim.offsetWidth;dim.style.transition='';if(bgm)bgmSet('bgm1');measure();hmain.classList.remove('pre');Ls.forEach(l=>{l.classList.remove('pop','in','spin','lhit');if(l.classList.contains('sm'))l.classList.add('fin')});if(bang)bang.textContent='!';hmain.classList.add('said','menu')};
   const saveFlag=()=>{try{sessionStorage.setItem('abacu_intro','1')}catch(e){}};
   const hasFlag=()=>{try{return sessionStorage.getItem('abacu_intro')==='1'}catch(e){return false}};
   const showMenu=()=>{hmain.classList.add('menu','said');saveFlag();[...hmain.querySelectorAll('button')].forEach((b,i)=>{b.classList.remove('mpop');void b.offsetWidth;b.style.animationDelay=(.25+i*.1)+'s';b.classList.add('mpop');setTimeout(()=>{b.classList.remove('mpop');b.style.animationDelay=''},1100+i*100)})};
-  const reveal=()=>{const [tx,ty]=logoPos();burst(tx,ty,1);bgmSet('bgm1');
+  const reveal=()=>{const [tx,ty]=logoPos();burst(tx,ty,1);bgmSet('bgm1');dim.classList.remove('on');
     Ls.forEach(l=>{if(!l.classList.contains('sm')&&l!==bang){l.classList.remove('pop');void l.offsetWidth;l.classList.add('lhit')}});
     if(bang){bang.classList.remove('pop');bang.classList.add('spin');setTimeout(()=>{bang.textContent='!'},600)}
     setTimeout(()=>sms.forEach(l=>l.classList.add('in')),1300); // ヒビが消えるころに顔を出す
     setTimeout(()=>flip(showMenu),2300)};
-  const playIntro=()=>{measure();hmain.classList.remove('menu','said');hmain.classList.add('pre');
+  const playIntro=()=>{dim.classList.add('on');measure();hmain.classList.remove('menu','said');hmain.classList.add('pre');
     Ls.forEach(l=>{l.classList.remove('in','spin','fin','lhit','pop')});if(bang)bang.textContent='?';
     setTimeout(()=>{Ls.forEach(l=>{if(!l.classList.contains('sm'))l.classList.add('pop')});hmain.classList.remove('pre');
       const go=document.getElementById('hbang');if(go){go.classList.remove('mpop');void go.offsetWidth;go.style.animationDelay='.8s';go.classList.add('mpop')}},1000)};
@@ -1631,7 +1673,7 @@ requestAnimationFrame(loop);
     if(b.id==='hbang'){const [tx,ty]=logoPos();b.style.visibility='hidden';shoot(tx,ty,1,()=>{reveal();setTimeout(()=>{busy=false},2600)});return}
     const r=b.getBoundingClientRect(),hr=home.getBoundingClientRect(),kb=!(e.clientX||e.clientY);
     const tx=kb?r.left-hr.left+r.width/2:e.clientX-hr.left,ty=kb?r.top-hr.top+r.height/2:e.clientY-hr.top;
-    const clip=btnPoly(b,hr);
+    const clip=btnPoly(b,hr);clip.owner=b;
     shoot(tx,ty,.5,()=>{burst(tx,ty,.2,clip);flash(b,'bhit',300);setTimeout(()=>{b._go=1;try{b.click()}finally{b._go=0;busy=false}},380)},clip);
   },true);
   // ホーム画面のSE：ボタンのマウスオーバー／クリック（mousedown）。複数あるものはランダム
@@ -1662,18 +1704,18 @@ requestAnimationFrame(loop);
       if(L<3)for(const c of clouds)if(c.layer===L)drawCloud(c)}
     fx.clearRect(0,0,W,H);
     for(const b of beams)if(b.front)drawBeam(fx,b);
-    for(let i=crack.length-1;i>=0;i--){const c=crack[i];c.g=Math.min(1,c.g+dt/.12);if(c.g>=1)c.t-=dt/1.3;if(c.t<=0){crack.splice(i,1);continue}
+    for(let i=crack.length-1;i>=0;i--){const c=crack[i];if(gone(c)){crack.splice(i,1);continue}c.g=Math.min(1,c.g+dt/.12);if(c.g>=1)c.t-=dt/1.3;if(c.t<=0){crack.splice(i,1);continue}
       fx.save();if(c.clip)clipTo(c.clip);fx.globalAlpha=Math.min(1,c.t*1.6);fx.lineJoin='miter';fx.lineCap='butt';
       const L=c.tot*c.g;
       for(const[dx,col,w]of[[2,SH,c.lw],[0,'#fff',c.lw]]){fx.strokeStyle=col;fx.lineWidth=w;fx.beginPath();
         fx.moveTo(c.pts[0][0]+dx,c.pts[0][1]+dx);
         for(let j=1;j<c.pts.length;j++){if(c.cum[j]<=L)fx.lineTo(c.pts[j][0]+dx,c.pts[j][1]+dx);else{const f=(L-c.cum[j-1])/(c.cum[j]-c.cum[j-1]);fx.lineTo(c.pts[j-1][0]+(c.pts[j][0]-c.pts[j-1][0])*f+dx,c.pts[j-1][1]+(c.pts[j][1]-c.pts[j-1][1])*f+dx);break}}
         fx.stroke()}fx.restore()}
-    for(let i=shards.length-1;i>=0;i--){const p=shards[i];p.t-=dt/1.1;if(p.t<=0){shards.splice(i,1);continue}
+    for(let i=shards.length-1;i>=0;i--){const p=shards[i];if(gone(p)){shards.splice(i,1);continue}p.t-=dt/1.1;if(p.t<=0){shards.splice(i,1);continue}
       p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;
       fx.save();if(p.clip)clipTo(p.clip);fx.globalAlpha=Math.min(1,p.t*2);fx.translate(p.x,p.y);fx.rotate(p.rot);
       fx.fillStyle=p.col;fx.strokeStyle=INK;fx.lineWidth=Math.max(1,2.5*Math.min(1,p.sz/8));fx.beginPath();fx.moveTo(p.sz,0);fx.lineTo(-p.sz*.6,p.sz*.7);fx.lineTo(-p.sz*.4,-p.sz*.8);fx.closePath();fx.stroke();fx.fill();fx.restore()}
-    for(let i=flashes.length-1;i>=0;i--){const f=flashes[i];f.t-=rdt/.22;if(f.t<=0){flashes.splice(i,1);continue}
+    for(let i=flashes.length-1;i>=0;i--){const f=flashes[i];if(gone(f)){flashes.splice(i,1);continue}f.t-=rdt/.22;if(f.t<=0){flashes.splice(i,1);continue}
       const r=f.r*(1.6-f.t*.6),g=fx.createRadialGradient(f.x,f.y,0,f.x,f.y,r);g.addColorStop(0,'rgba(255,255,255,'+f.t+')');g.addColorStop(1,'rgba(255,255,255,0)');fx.save();if(f.clip)clipTo(f.clip);fx.globalAlpha=1;fx.fillStyle=g;fx.fillRect(f.x-r,f.y-r,r*2,r*2);fx.restore()}
     fx.globalAlpha=1;
   }
