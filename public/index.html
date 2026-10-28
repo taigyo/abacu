@@ -90,6 +90,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 #hback.sm{margin-top:30px;padding:2px 10px;font-size:12px;border-width:2px;border-radius:8px;box-shadow:none;background:transparent;color:inherit;opacity:.5;text-shadow:none}
 #hback.sm:hover{opacity:1}
 #hpanel button.tg:disabled{opacity:.5;cursor:default}
+#msg.solid{background:#05020f}
 #msg input[type=range]{accent-color:var(--pink);vertical-align:middle}
 #home:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(circle,rgba(255,244,220,.16) 2.5px,transparent 3px) 0 0/24px 24px;animation:flow 6s linear infinite}
 @keyframes shk{0%{transform:skewX(-8deg)}15%{transform:skewX(-8deg) translate(-9px,3px)}35%{transform:skewX(-8deg) translate(7px,-4px)}55%{transform:skewX(-8deg) translate(-4px,2px)}100%{transform:skewX(-8deg)}}
@@ -112,6 +113,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 #hmain.pre>*{display:none}
 #hmain:not(.said) p{display:none}
 #hmain.said p{animation:pin .7s ease both}
+#hmain.settled p{animation:none}
 @keyframes pin{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:none}}
 #hbang{width:92px!important;font-size:46px!important;padding:0 0 4px!important;line-height:1.2}
 #home h1{will-change:translate}
@@ -129,10 +131,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 <div id="memo"><canvas id="mc"></canvas><div id="mcur"></div><div id="mt"><button data-c="#111" style="background:#111;color:#fff">黒</button><button data-c="#d22" style="background:#d22;color:#fff">赤</button><button data-c="#26c" style="background:#26c;color:#fff">青</button><button data-c="eraser">消しゴム</button><button data-c="clear">全消し</button>　<span id="mpg"></span>　Tab：相手切替　Mで閉じる</div></div>
 <div id="msg" style="display:none"><div><span id="mtt">一時停止</span><br><span id="mtc">クリックで再開</span><br><span style="font-size:13px;opacity:.8">視点が動かないときは、もう一度クリック。Pキーでも一時停止できます</span><br><span style="font-size:15px">マウス感度 <input id="psl" type="range" min="0.3" max="3" step="0.1" value="1"> <span id="psv">1.0</span></span><br><span style="font-size:15px">BGM <input id="pbg" type="range" min="0" max="1" step="0.05"> <span id="pbv"></span>　SE <input id="pse" type="range" min="0" max="1" step="0.05"> <span id="psev"></span></span><br><button id="hback">ホーム画面に戻る</button></div></div>
 <div id="home">
-  <div id="hmain"><h1><span class="L pop" style="--i:0;--c:#ff4d5e;--sh:#a31230">A</span><span class="L pop" style="--i:1;--c:#3d7bff;--sh:#17399a">B</span><span class="L sm" style="--c:#9cc2ff;--sh:#2a4f9e">a</span><span class="L pop" style="--i:2;--c:#ffd23f;--sh:#b07a00">C</span><span class="L sm" style="--c:#ffe58a;--sh:#b08a1a">u</span><span class="L bang pop" style="--i:3;--c:#fff4dc;--sh:#ff6b9d">?</span></h1><p>背中の3桁を読み取って、数字を暴け。暴かれたら脱落。</p>
+  <div id="hmain" class="pre"><h1><span class="L" style="--i:0;--c:#ff4d5e;--sh:#a31230">A</span><span class="L" style="--i:1;--c:#3d7bff;--sh:#17399a">B</span><span class="L sm" style="--c:#9cc2ff;--sh:#2a4f9e">a</span><span class="L" style="--i:2;--c:#ffd23f;--sh:#b07a00">C</span><span class="L sm" style="--c:#ffe58a;--sh:#b08a1a">u</span><span class="L bang" style="--i:3;--c:#fff4dc;--sh:#ff6b9d">?</span></h1><p>背中の3桁を読み取って、数字を暴け。暴かれたら脱落。</p>
     <button id="hs">1人であそぶ</button><button id="hr">みんなであそぶ</button><button id="hh">遊び方</button><button id="hc">設定</button><button id="hbang">!</button></div>
   <div id="hpanel"></div>
 </div>
+<script>try{var _b=sessionStorage.getItem('nh_boot');if(_b==='s'||_b==='p')document.getElementById('home').style.display='none'}catch(e){}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ===== 対戦設定（この端末に保存。オンラインではホストの設定を全員に送る想定）=====
@@ -333,13 +336,7 @@ const sky=new THREE.Mesh(skyG,new THREE.MeshBasicMaterial({vertexColors:true,sid
 const stars=(()=>{const a=[];for(let i=0;i<220;i++){const u=Math.random()*6.283,v=.1+Math.random()*.9,r=Math.sqrt(1-v*v);a.push(Math.cos(u)*r*240,v*240,Math.sin(u)*r*240)}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));
   const m=new THREE.Points(g,new THREE.PointsMaterial({color:0xfff4dc,size:2.4,sizeAttenuation:false,fog:false,depthWrite:false}));scene.add(m);return m})();
-const skyClouds=new THREE.Group();scene.add(skyClouds);
-{const sg=new THREE.SphereGeometry(1,10,8),ink=new THREE.MeshBasicMaterial({color:0x2b2250,side:THREE.BackSide,fog:false}),mats=[0xfff0f6,0xe3d6ff,0xffd9ec].map(c=>new THREE.MeshBasicMaterial({color:c,fog:false}));
-  const puff=(g,mat,x,y,z,sx,sy,sz)=>{const o=new THREE.Mesh(sg,ink);o.position.set(x,y,z);o.scale.set(sx*1.07,sy*1.07,sz*1.07);g.add(o);const m=new THREE.Mesh(sg,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);g.add(m)};
-  for(let i=0;i<14;i++){const g=new THREE.Group(),mat=mats[i%3],s=14+Math.random()*30;
-    puff(g,mat,0,0,0,s*1.8,s*.45,s*.9);puff(g,mat,-s*.6,s*.35,0,s*.7,s*.6,s*.7);puff(g,mat,s*.15,s*.55,0,s*.9,s*.8,s*.85);puff(g,mat,s*.8,s*.3,0,s*.6,s*.5,s*.6);
-    const a=i/14*6.283+Math.random()*.4,r=110+Math.random()*90;g.position.set(Math.cos(a)*r,34+Math.random()*40,Math.sin(a)*r);g.rotation.y=Math.random()*6.28;skyClouds.add(g)}}
-function updSky(dt){sky.position.copy(cam.position);stars.position.copy(cam.position);skyClouds.position.set(cam.position.x,0,cam.position.z);skyClouds.rotation.y+=dt*.012}
+function updSky(dt){sky.position.copy(cam.position);stars.position.copy(cam.position)}
 // 破片：弾が当たった壁・相手から、色つきのカケラが飛び散る
 const SHARDS=[],SHM={},shGeo=new THREE.TetrahedronGeometry(0.17,0),shMat=c=>SHM[c]||(SHM[c]=new THREE.MeshBasicMaterial({color:c}));
 function shatter(pos,color,n,nrm){
@@ -691,7 +688,7 @@ function lockFail(){ // 1回の失敗で、Promiseのcatchとpointerlockerrorの
   const now=performance.now();if(now-lastFailAt<200||document.pointerLockElement)return;lastFailAt=now;
   if(++tries<=2){lockTimer=setTimeout(lockGo,1100);return}
   tries=0;
-  if(++userFails>=3){dragOnly=true;msg.style.display='none';flashMsg('この環境では視点ロックが使えないため、ドラッグで動かします','#9ef',4);return}
+  if(++userFails>=3){dragOnly=true;msg.classList.remove('solid');msg.style.display='none';flashMsg('この環境では視点ロックが使えないため、ドラッグで動かします','#9ef',4);return}
   document.getElementById('mtc').textContent=MTC_ASK;
 }
 document.addEventListener('pointerlockerror',lockFail);
@@ -702,7 +699,7 @@ msg.addEventListener('click',()=>{
   tries=0;lockTry(); // 画面は、ロックできたときにだけ閉じる
 });
 document.addEventListener('pointerlockchange',()=>{
-  if(document.pointerLockElement){usedLock=true;tries=0;userFails=0;clearTimeout(lockTimer);msg.style.display='none';document.getElementById('mtc').textContent=online?'クリックで操作に戻る':'クリックで再開'}
+  if(document.pointerLockElement){msg.classList.remove('solid');usedLock=true;tries=0;userFails=0;clearTimeout(lockTimer);msg.style.display='none';document.getElementById('mtc').textContent=online?'クリックで操作に戻る':'クリックで再開'}
   else{lastExit=selfExit?0:performance.now();selfExit=false;if(usedLock&&!memoOpen&&!ending)msg.style.display='flex'}
 });
 rd.domElement.addEventListener('mousedown',()=>{
@@ -900,12 +897,13 @@ const SND={
 };
 const VOL={hover1:0.3,hover3:0.3,click1:0.7,click2:0.7,shattering1:0.8,shattering2:0.8,shattering3:0.8,lazer1:0.6,lazer2:0.6,powerup1:0.8,warp1:0.6,step1:0.25,explosion1:0.7,correct1:0.9,get1:0.75,wrong1:0.7};
 let BGMV=0.5,SEV=1;try{const a=parseFloat(localStorage.getItem('nh_bgmv'));if(a>=0&&a<=1)BGMV=a;const b=parseFloat(localStorage.getItem('nh_sev'));if(b>=0&&b<=1)SEV=b}catch(e){}
+const BGMK={bgm1:0.4,bgm2:0.3}; // 曲ごとの基準音量（ホーム=0.4、バトル=0.3）
 const bgmEls={};let bgmWant=null; // BGMは別ファイル（bgm1.mp3＝ホーム、bgm2.mp3＝バトル）をループ再生。ブラウザの制限で、最初のクリックまでは鳴らない
-const bgmEl=k=>bgmEls[k]||(bgmEls[k]=Object.assign(new Audio('bgm/'+k+'.mp3'),{loop:true,preload:'none',volume:BGMV*0.6}));
+const bgmEl=k=>bgmEls[k]||(bgmEls[k]=Object.assign(new Audio('bgm/'+k+'.mp3'),{loop:true,preload:'none',volume:BGMV*BGMK[k]}));
 function bgmApply(){for(const k of['bgm1','bgm2']){const e=bgmEls[k]||(k===bgmWant?bgmEl(k):null);if(!e)continue;
-  if(k===bgmWant){e.volume=BGMV*0.6;if(e.paused){const r=e.play();if(r&&r.catch)r.catch(()=>{})}}else if(!e.paused)e.pause()}}
+  if(k===bgmWant){e.volume=BGMV*BGMK[k];if(e.paused){const r=e.play();if(r&&r.catch)r.catch(()=>{})}}else if(!e.paused)e.pause()}}
 function bgmSet(k){if(bgmWant===k)return;bgmWant=k;if(k==='bgm2'){try{bgmEl(k).currentTime=0}catch(x){}}bgmApply()}
-function setBGMV(v){BGMV=v;try{localStorage.setItem('nh_bgmv',v)}catch(e){}for(const k in bgmEls)bgmEls[k].volume=v*0.6}
+function setBGMV(v){BGMV=v;try{localStorage.setItem('nh_bgmv',v)}catch(e){}for(const k in bgmEls)bgmEls[k].volume=v*BGMK[k]}
 function setSEV(v){SEV=v;try{localStorage.setItem('nh_sev',v)}catch(e){}if(master)master.gain.value=0.7*v}
 addEventListener('pointerdown',bgmApply,true);addEventListener('keydown',bgmApply,true);
 let ac=null,master=null,bt=0;const sbuf={};
@@ -1136,7 +1134,7 @@ function drawScore(){
 }
 function scoreKill(a){a.kills=(a.kills||0)+1;drawScore();if(CFG.mode==='pts'&&a.kills>=CFG.goal)finish('goal')}
 function finish(reason){
-  if(over)return;over=true;cleared=true;
+  if(over)return;over=true;cleared=true;bgmSet(null);
   const pts=CFG.mode==='pts';
   const act=[{n:'あなた',a:PL,alive:true},...bots.slice(0,CFG.bots).map(b=>({n:b.name,a:b,alive:b.st!=='out'}))];
   act.forEach(o=>o.k=o.a.kills||0);
@@ -1161,7 +1159,7 @@ function checkEnd(){ // オンライン：生き残りが1人以下になった�
   if((over?0:1)+bots.filter(b=>b.st!=='out'&&b.remote).length<=1)endSequence();
 }
 function endSequence(){
-  if(ending)return;ending=true;
+  if(ending)return;ending=true;bgmSet(null);
   for(const k in keys)keys[k]=false;
   if(memoOpen){memoOpen=false;memoEl.style.display='none';drawing=false} // メモを開いたままでも、決着で閉じる
   timeScale=0.25;sfx('explosion1',0.6);
@@ -1451,7 +1449,7 @@ try{const bo=sessionStorage.getItem('nh_boot');
 if(bo==='create'||(bo&&bo.startsWith('join:'))){sessionStorage.removeItem('nh_boot');NET.name=getName()||'プレイヤー';hmain.style.display='none';hpanel.style.display='block';hpanel.innerHTML='つなぎ中…';
   if(bo==='create')netOpen(newCode(),true);else netOpen(bo.slice(5),false)}
 else if(bo){sessionStorage.removeItem('nh_boot');
-  startGame(bo==='p');bootMsg=true;document.getElementById('mtt').textContent='準備できました';document.getElementById('mtc').textContent='クリックでスタート';msg.style.display='flex'}}catch(e){}
+  startGame(bo==='p');bootMsg=true;msg.classList.add('solid');document.getElementById('mtt').textContent='準備できました';document.getElementById('mtc').textContent='クリックでスタート';msg.style.display='flex'}}catch(e){}
 let last=performance.now(),gt=0;
 function loop(t){
   const dt=Math.min(0.05,(t-last)/1000)*timeScale;last=t;
@@ -1586,7 +1584,7 @@ requestAnimationFrame(loop);
   const sms=Ls.filter(l=>l.classList.contains('sm')),bang=Ls.find(l=>l.classList.contains('bang'));
   const mk=z=>{const c=document.createElement('canvas');c.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:'+z;home.insertBefore(c,home.firstChild);return c};
   const back=mk(0),front=mk(2),bx=back.getContext('2d'),fx=front.getContext('2d');
-  if(!bx||!fx)return;
+  if(!bx||!fx){hmain.classList.remove('pre');return}
   const dim=document.createElement('div');dim.id='hdim';home.insertBefore(dim,back.nextSibling); // 「!」を押してヒビが入るまで背景を少し暗くし、BGMと一緒に明るくする
   const INK='#2b2250',SH='rgba(43,34,80,.85)',CREAM='#fff4dc',R=Math.random,COLS=['#ff6b9d','#2ec4b6','#ffd23f',CREAM];
   let W=0,H=0,dpr=1;
@@ -1632,7 +1630,7 @@ requestAnimationFrame(loop);
     hsfx(SHAT,sc>=1?.9:.6);
     const n=7+(R()*3|0);for(let i=0;i<n;i++)mkCrack(x,y,R()*6.28,(60+R()*150)*sc,sc,0);
     for(let i=0;i<26;i++){const a=R()*6.28,sp=(160+R()*360)*1.35*(.35+.65*sc),sz=(6+R()*12)*Math.max(sc,.3);
-      shards.push({clip,x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-120*sc,rot:R()*6.28,vr:(R()-.5)*14,sz,t:1,g:900*Math.max(sc,.3),col:COLS[R()*4|0]})}};
+      shards.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-120*sc,rot:R()*6.28,vr:(R()-.5)*14,sz,t:1,g:900*Math.max(sc,.3),col:COLS[R()*4|0]})}};
   const hsfx=(list,vol,force)=>{if(typeof ac==='undefined'||!ac)return;const go=()=>sfx(list[R()*list.length|0],vol);if(ac.state==='running')go();else if(force)ac.resume().then(go,()=>{})};
   const SHAT=['shattering1','shattering2','shattering3'],LAZ=['lazer1','lazer2'];
   const flash=(el,cls,ms)=>{el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),ms)};
@@ -1648,7 +1646,8 @@ requestAnimationFrame(loop);
     const t0=h1.getBoundingClientRect().top;h1.style.transition='none';h1.style.translate='0 0';fn();
     const d=t0-h1.getBoundingClientRect().top;h1.style.translate='0 '+d+'px';void h1.offsetWidth;
     h1.style.transition='translate .9s cubic-bezier(.22,.8,.2,1)';h1.style.translate='0 0'};
-  const setFin=(bgm)=>{dim.style.transition='none';dim.classList.remove('on');void dim.offsetWidth;dim.style.transition='';if(bgm)bgmSet('bgm1');measure();hmain.classList.remove('pre');Ls.forEach(l=>{l.classList.remove('pop','in','spin','lhit');if(l.classList.contains('sm'))l.classList.add('fin')});if(bang)bang.textContent='!';hmain.classList.add('said','menu')};
+  const settle=()=>{Ls.forEach(l=>{l.classList.remove('pop','in','spin','lhit');if(l.classList.contains('sm'))l.classList.add('fin')});if(bang)bang.textContent='!';hmain.classList.add('settled')}; // 演出が終わったら、アニメ無しの完成形にする（「戻る」で再表示されても動かない）
+  const setFin=(bgm)=>{dim.style.transition='none';dim.classList.remove('on');void dim.offsetWidth;dim.style.transition='';if(bgm)bgmSet('bgm1');measure();hmain.classList.remove('pre');Ls.forEach(l=>{l.classList.remove('pop','in','spin','lhit');if(l.classList.contains('sm'))l.classList.add('fin')});if(bang)bang.textContent='!';hmain.classList.add('said','menu','settled')};
   const saveFlag=()=>{try{sessionStorage.setItem('abacu_intro','1')}catch(e){}};
   const hasFlag=()=>{try{return sessionStorage.getItem('abacu_intro')==='1'}catch(e){return false}};
   const showMenu=()=>{hmain.classList.add('menu','said');saveFlag();[...hmain.querySelectorAll('button')].forEach((b,i)=>{b.classList.remove('mpop');void b.offsetWidth;b.style.animationDelay=(.25+i*.1)+'s';b.classList.add('mpop');setTimeout(()=>{b.classList.remove('mpop');b.style.animationDelay=''},1100+i*100)})};
@@ -1656,8 +1655,8 @@ requestAnimationFrame(loop);
     Ls.forEach(l=>{if(!l.classList.contains('sm')&&l!==bang){l.classList.remove('pop');void l.offsetWidth;l.classList.add('lhit')}});
     if(bang){bang.classList.remove('pop');bang.classList.add('spin');setTimeout(()=>{bang.textContent='!'},600)}
     setTimeout(()=>sms.forEach(l=>l.classList.add('in')),1300); // ヒビが消えるころに顔を出す
-    setTimeout(()=>flip(showMenu),2300)};
-  const playIntro=()=>{dim.classList.add('on');measure();hmain.classList.remove('menu','said');hmain.classList.add('pre');
+    setTimeout(()=>flip(showMenu),2300);setTimeout(settle,3400)};
+  const playIntro=()=>{dim.classList.add('on');measure();hmain.classList.remove('menu','said','settled');hmain.classList.add('pre');
     Ls.forEach(l=>{l.classList.remove('in','spin','fin','lhit','pop')});if(bang)bang.textContent='?';
     setTimeout(()=>{Ls.forEach(l=>{if(!l.classList.contains('sm'))l.classList.add('pop')});hmain.classList.remove('pre');
       const go=document.getElementById('hbang');if(go){go.classList.remove('mpop');void go.offsetWidth;go.style.animationDelay='.8s';go.classList.add('mpop')}},1000)};
