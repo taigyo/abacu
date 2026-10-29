@@ -52,7 +52,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 #home button:nth-of-type(3){background:var(--pink)}
 #home button:hover{transform:translate(-2px,-2px) skewX(-5deg);box-shadow:7px 7px 0 var(--ink)}
 #home button:active{transform:translate(4px,4px) skewX(-5deg);box-shadow:1px 1px 0 var(--ink)}
-#hpanel{display:none;max-width:660px;line-height:1.8;font-size:15px;text-align:left;background:#fff;color:var(--ink);padding:14px 20px;border-radius:18px;border:4px solid var(--ink);box-shadow:6px 6px 0 var(--pink);animation:fin .25s ease-out}
+#hpanel{display:none;max-width:660px;max-height:calc(100vh - 40px);overflow-y:auto;line-height:1.8;font-size:15px;text-align:left;background:#fff;color:var(--ink);padding:14px 20px;border-radius:18px;border:4px solid var(--ink);box-shadow:6px 6px 0 var(--pink);animation:fin .25s ease-out}
 #hpanel input[type=range]{accent-color:var(--pink)}
 #msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(43,34,80,.78);color:var(--cream);font-size:22px;font-weight:900;line-height:1.9;cursor:pointer;text-shadow:3px 3px 0 var(--pink);animation:fin .25s ease-out}
 #hback{margin-top:16px;padding:8px 22px;font-size:17px;font-weight:900;font-family:inherit;border-radius:14px;border:3px solid var(--ink);background:var(--yel);color:var(--ink);cursor:pointer;box-shadow:4px 4px 0 var(--ink);text-shadow:none}
@@ -131,8 +131,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 <div id="memo"><canvas id="mc"></canvas><div id="mcur"></div><div id="mt"><button data-c="#111" style="background:#111;color:#fff">黒</button><button data-c="#d22" style="background:#d22;color:#fff">赤</button><button data-c="#26c" style="background:#26c;color:#fff">青</button><button data-c="eraser">消しゴム</button><button data-c="clear">全消し</button>　<span id="mpg"></span>　Tab：相手切替　Mで閉じる</div></div>
 <div id="msg" style="display:none"><div><span id="mtt">一時停止</span><br><span id="mtc">クリックで再開</span><br><span style="font-size:13px;opacity:.8">視点が動かないときは、もう一度クリック。Pキーでも一時停止できます</span><br><span style="font-size:15px">マウス感度 <input id="psl" type="range" min="0.3" max="3" step="0.1" value="1"> <span id="psv">1.0</span></span><br><span style="font-size:15px">BGM <input id="pbg" type="range" min="0" max="1" step="0.05"> <span id="pbv"></span>　SE <input id="pse" type="range" min="0" max="1" step="0.05"> <span id="psev"></span></span><br><button id="hback">ホーム画面に戻る</button></div></div>
 <div id="home">
-  <div id="hmain" class="pre"><h1><span class="L" style="--i:0;--c:#ff4d5e;--sh:#a31230">A</span><span class="L" style="--i:1;--c:#3d7bff;--sh:#17399a">B</span><span class="L sm" style="--c:#9cc2ff;--sh:#2a4f9e">a</span><span class="L" style="--i:2;--c:#ffd23f;--sh:#b07a00">C</span><span class="L sm" style="--c:#ffe58a;--sh:#b08a1a">u</span><span class="L bang" style="--i:3;--c:#fff4dc;--sh:#ff6b9d">?</span></h1><p>背中の3桁を読み取って、数字を暴け。暴かれたら脱落。</p>
-    <button id="hs">1人であそぶ</button><button id="hr">みんなであそぶ</button><button id="hh">遊び方</button><button id="hc">設定</button><button id="hbang">!</button></div>
+  <div id="hmain" class="pre"><h1><span class="L" style="--i:0;--c:#ff4d5e;--sh:#a31230">A</span><span class="L" style="--i:1;--c:#3d7bff;--sh:#17399a">B</span><span class="L sm" style="--c:#9cc2ff;--sh:#2a4f9e">a</span><span class="L" style="--i:2;--c:#ffd23f;--sh:#b07a00">C</span><span class="L sm" style="--c:#ffe58a;--sh:#b08a1a">u</span><span class="L bang" style="--i:3;--c:#fff4dc;--sh:#ff6b9d">?</span></h1><p>裏を読め。真実を暴け。</p>
+    <button id="hs">ひとりであそぶ</button><button id="hr">みんなであそぶ</button><button id="hh">あそびかた</button><button id="hc">設定</button><button id="hbang">!</button></div>
   <div id="hpanel"></div>
 </div>
 <script>try{var _b=sessionStorage.getItem('nh_boot');if(_b==='s'||_b==='p')document.getElementById('home').style.display='none'}catch(e){}</script>
@@ -140,7 +140,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Hira
 <script>
 // ===== 対戦設定（この端末に保存。オンラインではホストの設定を全員に送る想定）=====
 const cfgFrom=s=>{
-  const c={num:true,warp:true,ch:[true,true,true],map:90,bots:3,obots:0,diff:1,hb:false,mode:'surv',time:0,goal:5,chests:5};
+  const c={num:true,warp:true,ch:[true,true,true],map:90,bots:3,obots:0,diff:1,hb:false,mode:'surv',time:0,goal:5,chests:5,gsec:120,ghit:0.5};
   if(!s||typeof s!=='object')return c;
   if(typeof s.num==='boolean')c.num=s.num;
   if(typeof s.warp==='boolean')c.warp=s.warp;
@@ -155,10 +155,12 @@ const cfgFrom=s=>{
   if(s.mode==='surv'||s.mode==='pts')c.mode=s.mode;
   if([0,180,300,600].includes(s.time))c.time=s.time;
   if([3,5,10].includes(s.goal))c.goal=s.goal;
+  if([60,90,120,180,240].includes(s.gsec))c.gsec=s.gsec;
+  if([0.25,0.5,0.75,1].includes(s.ghit))c.ghit=s.ghit;
   return c;
 };
 const CFG=cfgFrom((()=>{try{return JSON.parse(localStorage.getItem('nh_cfg')||'{}')}catch(e){return {}}})());
-let practice=false,bootMsg=false,online=false,ending=false,timeScale=1;const outOrder=[];
+let practice=false,bootMsg=false,online=false,ending=false,timeScale=1,finEnd=null;const outOrder=[];
 const RESP=3,fmtT=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 let matchT=0; // 「ためす」モード（誰もいない空間）
 const saveCfg=()=>{try{localStorage.setItem('nh_cfg',JSON.stringify(CFG));return true}catch(e){return false}};
@@ -175,7 +177,7 @@ const newCode=()=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=
 const randName=()=>['きつね','たぬき','うさぎ','ぺんぎん','くま','ねこ','いぬ','ふくろう','かめ','ぱんだ'][(Math.random()*10)|0]+((Math.random()*90+10)|0);
 const getName=()=>{try{return localStorage.getItem('nh_name')||''}catch(e){return ''}};
 const setName=n=>{try{localStorage.setItem('nh_name',n)}catch(e){}};
-const cfgText=c=>[c.mode==='pts'?'ポイント制（先取り'+c.goal+'点）':'サバイバル',c.time?'制限'+(c.time/60)+'分':'制限なし','マップ'+c.map+'m','背中の数字'+(c.num?'あり':'なし'),'ワープ'+(c.warp?'あり':'なし'),c.hb?'ヒット＆ブロー':'あたり/はずれのみ','宝箱'+(c.chests||5)].join('　');
+const cfgText=c=>[c.mode==='pts'?'ポイント制（先取り'+c.goal+'点）':'サバイバル',c.time?'制限'+(c.time/60)+'分':'制限なし','マップ'+c.map+'m','背中の数字'+(c.num?'あり':'なし'),'ワープ'+(c.warp?'あり':'なし'),c.hb?'ヒット＆ブロー':'あたり/はずれのみ','宝箱'+(c.chests||5),'ゲージ'+(c.gsec||120)+'秒で1／命中+'+(c.ghit||0.5)].join('　');
 function netOpen(code,create){
   NET.room=code;NET.host=false;NET.started=false;NET.members=[];
   const proto=location.protocol==='https:'?'wss://':'ws://';
@@ -548,7 +550,7 @@ function uniq(){let n;do{n=String(Math.floor(Math.random()*1000)).padStart(3,'0'
 let myNum=uniq();const INV=5,GONE=2,INVP=6,SPD=8,FRZ=4,TRR=2.5,WALK=8,AIR=1,XRAYT=8,RADART=10,CLOAKT=6,JUMPT=12,SPAWNT=15,STEPT=0.12,STEPV=50,STEPCD=3;
 let REACT=0.8,WGRACE=1.2,MISS=1/3,BGUESS=6,RREAD=0,TURN=1.75,BSPD=8,AITK=0.25;let warpAt=0; // 気づくまでの秒数／ワープ後に撃たない秒数／外す確率／判定に踏み切る候補数
 const bots=[],palette=[0xff8a3d,0xb06cff,0x37d67a],BN=['オレンジ','紫','緑'];
-const newK=()=>({par:[null,null,null],lo:[0,0,0],hi:[9,9,9],sp:null,slo:0,shi:27,m3:null,dup:null,ev:null,pc:null,mm:null,mxlo:0,mxhi:9,mnlo:0,mnhi:9,has:{},dl:{},dx:{},sm:{},cmp:{}});
+const newK=()=>({par:[null,null,null],lo:[0,0,0],hi:[9,9,9],sp:null,slo:0,shi:27,m3:null,dup:null,ev:null,pc:null,m3d:[null,null,null],mm:null,mxlo:0,mxhi:9,mnlo:0,mnhi:9,has:{},dl:{},dx:{},sm:{},cmp:{}});
 const ALL=[...Array(1000).keys()].map(i=>String(i).padStart(3,'0'));
 function newTarget(b){let r;for(let n=0;n<30;n++){r=rpos();if(Math.hypot(wd(r[0]-b.x),wd(r[1]-b.z))<25)break}b.tx=r[0];b.tz=r[1];b.t=0}
 for(let i=0;i<3;i++){
@@ -577,16 +579,16 @@ function lim(K,k,a,n){const b=bnd(K.lo[k],K.hi[k],a,n);K.lo[k]=b[0];K.hi[k]=b[1]
 const NG=n=>'<span style="color:#3ddc84">'+n+'</span>';
 const HT=[
  {w:10,mk:()=>({}),ans:d=>d.map(x=>x%2).join(''),ap:(K,a)=>{[...a].forEach((c,i)=>{K.par[i]=+c})},lab:()=>'各桁の偶奇'},
- {w:5,mk:()=>({k:rk()}),ans:(d,q)=>d[q.k]%2,ap:(K,a,q)=>{K.par[q.k]=a},lab:q=>L3[q.k]+'の偶奇'},
+ {w:0,mk:()=>({k:rk()}),ans:(d,q)=>d[q.k]%2,ap:(K,a,q)=>{K.par[q.k]=a},lab:q=>L3[q.k]+'の偶奇'},
  {w:10,nr:[1,9],mk:()=>({k:rk(),n:rn(3,7)}),ans:(d,q)=>d[q.k]>=q.n,ap:(K,a,q)=>lim(K,q.k,a,q.n),lab:q=>L3[q.k]+'は'+NG(q.n)+'以上か'},
  {w:10,mk:()=>({}),ans:d=>d.map(x=>x>=5?1:0).join(''),ap:(K,a)=>{[...a].forEach((c,i)=>lim(K,i,c==='1',5))},lab:()=>'HIGH or LOW（A・B・C）'},
- {w:3,mk:()=>({}),ans:d=>(d[0]+d[1]+d[2])%2,ap:(K,a)=>{K.sp=a},lab:()=>'A+B+Cの偶奇'},
+ {w:1,mk:()=>({}),ans:d=>(d[0]+d[1]+d[2])%2,ap:(K,a)=>{K.sp=a},lab:()=>'A+B+Cの偶奇'},
  {w:8,nr:[1,27],mk:()=>({n:rn(11,16)}),ans:(d,q)=>d[0]+d[1]+d[2]>=q.n,ap:(K,a,q)=>{const b=bnd(K.slo,K.shi,a,q.n);K.slo=b[0];K.shi=b[1]},lab:q=>'A+B+Cは'+NG(q.n)+'以上か'},
  {w:2,mk:()=>({}),ans:d=>new Set(d).size<3,ap:(K,a)=>{K.dup=a},lab:()=>'同じ数字の有無'},
  {w:6,nr:[1,9],mk:()=>({p:pair(),n:rn(2,4)}),ans:(d,q)=>Math.abs(d[q.p[0]]-d[q.p[1]])>=q.n,ap:(K,a,q)=>{const o=K.dl[pk(q)]||[0,9];K.dl[pk(q)]=bnd(o[0],o[1],a,q.n)},lab:q=>pn(q)+'の差は'+NG(q.n)+'以上か'},
- {w:8,mk:()=>({}),ans:d=>d.filter(x=>x%2===0).length,ap:(K,a)=>{K.ev=a},lab:()=>'偶数の桁の数'},
- {w:3,mk:()=>({p:pair()}),ans:(d,q)=>d[q.p[0]]%2===d[q.p[1]]%2,ap:(K,a,q)=>{K.sm[pk(q)]=a},lab:q=>pn(q)+'の偶奇は同じか'},
- {w:8,mk:()=>({k:rk()}),ans:(d,q)=>Math.floor(d[q.k]/3),ap:(K,a,q)=>{K.lo[q.k]=Math.max(K.lo[q.k],a*3);K.hi[q.k]=Math.min(K.hi[q.k],a*3+2>9?9:a*3+2)},lab:q=>L3[q.k]+'の範囲（3刻み）'},
+ {w:4,mk:()=>({}),ans:d=>d.filter(x=>x%2===0).length,ap:(K,a)=>{K.ev=a},lab:()=>'偶数の桁の数'},
+ {w:0,mk:()=>({p:pair()}),ans:(d,q)=>d[q.p[0]]%2===d[q.p[1]]%2,ap:(K,a,q)=>{K.sm[pk(q)]=a},lab:q=>pn(q)+'の偶奇は同じか'},
+ {w:3,mk:()=>({k:rk()}),ans:(d,q)=>Math.floor(d[q.k]/3),ap:(K,a,q)=>{K.lo[q.k]=Math.max(K.lo[q.k],a*3);K.hi[q.k]=Math.min(K.hi[q.k],a*3+2>9?9:a*3+2)},lab:q=>L3[q.k]+'の範囲（±3）'},
  {w:8,mk:()=>({p:pair()}),ans:(d,q)=>d[q.p[0]]-d[q.p[1]],ap:(K,a,q)=>{K.dx[pk(q)]=a},lab:q=>L3[q.p[0]]+'−'+L3[q.p[1]]+'の値'},
  {w:8,nr:[0,9],mk:()=>({n:rn(0,9)}),ans:(d,q)=>d.includes(q.n),ap:(K,a,q)=>{K.has[q.n]=a},lab:q=>NG(q.n)+'が含まれているか'},
  {w:8,mk:()=>({}),ans:d=>Math.max(...d)-Math.min(...d),ap:(K,a)=>{K.mm=a},lab:()=>'最大値と最小値の差'},
@@ -594,7 +596,14 @@ const HT=[
  {w:6,nr:[1,9],mk:()=>({n:rn(1,4)}),ans:(d,q)=>Math.min(...d)>=q.n,ap:(K,a,q)=>{const b=bnd(K.mnlo,K.mnhi,a,q.n);K.mnlo=b[0];K.mnhi=b[1]},lab:q=>'最小値は'+NG(q.n)+'以上か'},
  {w:6,mk:()=>({p:pair()}),ans:(d,q)=>sg(d[q.p[0]]-d[q.p[1]]),ap:(K,a,q)=>{K.cmp[pk(q)]=a},lab:q=>pn(q)+'の大小'},
  {w:4,mk:()=>({}),ans:d=>d.filter(x=>PR.includes(x)).length,ap:(K,a)=>{K.pc=a},lab:()=>'素数(2,3,5,7)の桁の数'},
- {w:4,mk:()=>({}),ans:d=>(d[0]+d[1]+d[2])%3,ap:(K,a)=>{K.m3=a},lab:()=>'A+B+Cを3で割った余り'}
+ {w:4,mk:()=>({}),ans:d=>(d[0]+d[1]+d[2])%3,ap:(K,a)=>{K.m3=a},lab:()=>'A+B+Cを3で割った余り'},
+ // ---- Stage 24：情報量の多いヒント（番号は後ろに足す。前の番号は変えない）----
+ {w:8,mk:()=>({}),ans:d=>[sg(d[0]-d[1]),sg(d[0]-d[2]),sg(d[1]-d[2])].join(','),ap:(K,a)=>{a.split(',').forEach((v,i)=>{K.cmp[['01','02','12'][i]]=+v})},lab:()=>'A・B・Cの大小の並び'},
+ {w:8,mk:()=>({}),ans:d=>d.map(x=>Math.floor(x/3)).join(''),ap:(K,a)=>{[...a].forEach((c,i)=>{c=+c;K.lo[i]=Math.max(K.lo[i],c*3);K.hi[i]=Math.min(K.hi[i],Math.min(9,c*3+2))})},lab:()=>'A・B・Cの範囲（0-2／3-5／6-8／9）'},
+ {w:5,mk:()=>({}),ans:d=>Math.max(...d),ap:(K,a)=>{K.mxlo=a;K.mxhi=a},lab:()=>'いちばん大きい数字'},
+ {w:5,mk:()=>({}),ans:d=>Math.min(...d),ap:(K,a)=>{K.mnlo=a;K.mnhi=a},lab:()=>'いちばん小さい数字'},
+ {w:3,mk:()=>({}),ans:d=>d[0]+d[1]+d[2],ap:(K,a)=>{K.slo=a;K.shi=a},lab:()=>'A+B+Cの合計'},
+ {w:4,mk:()=>({}),ans:d=>d.map(x=>x%3).join(''),ap:(K,a)=>{[...a].forEach((c,i)=>{K.m3d[i]=+c})},lab:()=>'A・B・Cを3で割った余り'}
 ];
 const HW=HT.reduce((s,h)=>s+h.w,0);
 function newHint(){
@@ -609,6 +618,7 @@ function kLines(K){
   for(let k=0;k<3;k++){
     const t=[];
     if(K.par[k]!==null)t.push(K.par[k]?'奇数':'偶数');
+    if(K.m3d[k]!==null)t.push('3で割ると'+K.m3d[k]+'余る');
     if(K.lo[k]>0||K.hi[k]<9)t.push(R(K.lo[k],K.hi[k]));
     if(t.length)o.push(L3[k]+'：'+t.join('・'));
   }
@@ -907,6 +917,9 @@ function setBGMV(v){BGMV=v;try{localStorage.setItem('nh_bgmv',v)}catch(e){}for(c
 function setSEV(v){SEV=v;try{localStorage.setItem('nh_sev',v)}catch(e){}if(master)master.gain.value=0.7*v}
 addEventListener('pointerdown',bgmApply,true);addEventListener('keydown',bgmApply,true);
 let ac=null,master=null,bt=0;const sbuf={};
+const seLive=new Map(); // 鳴っている最中の音（決着の瞬間に止めるため）
+const SE_ENDOK=new Set(['explosion1','correct1','wrong1','click1','click2','hover1','hover3']); // 決着のあとも鳴らしてよい音
+function stopSe(keep){for(const [n,k] of [...seLive]){if(keep&&keep.includes(k))continue;try{n.stop()}catch(e){}seLive.delete(n)}}
 function initAudio(){
   if(ac){if(ac.state==='suspended')ac.resume();return}
   try{
@@ -922,11 +935,13 @@ function initAudio(){
 const FXC={get1:'#ffd23f',correct1:'#2ec4b6',wrong1:'#ff4d6d',explosion1:'#ffffff',powerup1:'#ff6b9d',warp1:'#7fe0ff'},fxEl=document.getElementById('fx');
 function fx(c){fxEl.style.setProperty('--fxc',c);fxEl.classList.remove('go');void fxEl.offsetWidth;fxEl.classList.add('go')}
 function sfx(k,vol){
+  if(ending&&!SE_ENDOK.has(k))return; // 決着後は、ほかの効果音を出さない
   if(FXC[k])fx(FXC[k]);
   if(!ac)return;
   if(!sbuf[k]){if(SYN[k])SYN[k]();return}
   const s=ac.createBufferSource(),g=ac.createGain();
   s.buffer=sbuf[k];g.gain.value=vol===undefined?VOL[k]:vol;s.connect(g);g.connect(master);s.start();
+  seLive.set(s,k);s.onended=()=>seLive.delete(s);
 }
 function beep(){ // 移動中の断続ビープ（ビーッ ビーッ）
   if(!ac)return;
@@ -942,6 +957,7 @@ function tone(f,t0,d,type,v){
   const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+t0;
   o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
   o.connect(g);g.connect(master);o.start(t);o.stop(t+d+0.02);
+  seLive.set(o,'tone');o.onended=()=>seLive.delete(o);
 }
 const SYN={
   get1:()=>{tone(660,0,0.1,'sine',0.25);tone(990,0.08,0.16,'sine',0.25)},
@@ -955,6 +971,7 @@ const MEL=[523,659,784,1047,784,659,523,392],MEL2=[392,523,659,784,659,523,392,3
 let mi=0,mt=0;
 let startInv=false;
 function melody(dt){
+  if(ending||over)return; // 決着したら、無敵のメロディも止める
   if(!ac||p.inv<=0){mi=0;mt=0;if(p.inv<=0)startInv=false;return}
   mt-=dt;if(mt>0)return;
   const late=p.inv<(startInv?4.5:2),fin=startInv&&p.inv<1.5,f=((mi>>3)&1?MEL2:MEL)[mi++%8]*(fin?1.5:late?1.335:1);
@@ -1065,7 +1082,7 @@ function fire(){
   const b=h0&&h0.object.userData.bot;
   if(h0){const nm=h0.face?h0.face.normal.clone().transformDirection(h0.object.matrixWorld):null,col=b?b.color:(h0.object.material&&h0.object.material.color?h0.object.material.color.getHex():0xffffff);shatter(h0.point,col,b?16:9,nm)}
   else{const hg=ray.intersectObject(ground,false)[0];if(hg&&hg.distance<70)shatter(hg.point,0x9fa8ff,5,new THREE.Vector3(0,1,0))}
-  if(b){addLog(b,a);gauge=Math.min(GMAX,gauge+0.5);drawNum();flashMsg('HIT!','#f44');b.st='gone';b.gone=GONE;b.g.visible=false;b.frz=0;if(b.remote){b.goneT=0.4;netTo(b.remote,{k:'hit'})}}
+  if(b){addLog(b,a);gauge=Math.min(GMAX,gauge+CFG.ghit);drawNum();flashMsg('HIT!','#f44');b.st='gone';b.gone=GONE;b.g.visible=false;b.frz=0;if(b.remote){b.goneT=0.4;netTo(b.remote,{k:'hit'})}}
 }
 
 // ===== ボットAI =====
@@ -1076,6 +1093,38 @@ const aShown=a=>a===PL?(aVuln(a)&&p.hide<=0):aVuln(a); // 背中の数字が見�
 const aLive=a=>a===PL?!over:a.st!=='out';
 const aNum=a=>a===PL?myNum:a.num,aKey=a=>a===PL?'P':bots.indexOf(a);
 let over=false;
+// ===== プレイヤー同士の押し合い：当たり判定の半径は見た目（幅0.7m）よりかなり広め =====
+const SEPR=1.3;
+function nudge(e,ox,oz,y,r){ // 壁にめり込まないように、軸ごとに動かす（動けたらtrue）
+  let mv=false;
+  if(!hit(e.x+ox,e.z,y,r)){e.x=wd(e.x+ox);mv=true}
+  if(!hit(e.x,e.z+oz,y,r)){e.z=wd(e.z+oz);mv=true}
+  return mv;
+}
+function sepStep(){
+  if(ending||practice||!started)return;
+  const live=bots.filter(b=>b.st==='alive');
+  const sep=(a,b,aIsP)=>{ // aIsP：aが自分。bが自分以外
+    const ay=aIsP?p.y:(a.remote?(a.y||0):0),by=b.remote?(b.y||0):0;
+    if(Math.abs(ay-by)>1.5)return;
+    let dx=wd(a.x-b.x),dz=wd(a.z-b.z),d=Math.hypot(dx,dz);
+    if(d>=SEPR)return;
+    if(d<0.01){const q=Math.random()*6.283;dx=Math.cos(q)*0.01;dz=Math.sin(q)*0.01;d=0.01}
+    const o=(SEPR-d)/2,ux=dx/d,uz=dz/d;
+    const aMove=aIsP||!a.remote,bMove=!b.remote; // ほかの参加者の位置は、その人の端末が自分で押し出す
+    let am=false,bm=false;
+    if(aMove)am=nudge(a,ux*o,uz*o,aIsP?p.y:0,aIsP?R:0.5);
+    if(bMove)bm=nudge(b,-ux*o,-uz*o,0,0.5);
+    if(aMove&&bMove){ // 片方が壁で動けなければ、もう片方が多めに動く
+      if(!am&&bm)nudge(b,-ux*o,-uz*o,0,0.5);
+      else if(am&&!bm)nudge(a,ux*o,uz*o,aIsP?p.y:0,aIsP?R:0.5);
+    }
+    if(!a.remote&&!aIsP)a.g.position.set(a.x,0,a.z);
+    if(!b.remote)b.g.position.set(b.x,0,b.z);
+  };
+  for(const b of live)sep(p,b,true);
+  for(let i=0;i<live.length;i++)for(let j=i+1;j<live.length;j++){if(!live[i].remote||!live[j].remote)sep(live[i],live[j],false)}
+}
 function topAt(x,z){let t=0;for(const b of boxes)if(b.maxY>t&&Math.abs(wd(x-b.cx))<b.hx&&Math.abs(wd(z-b.cz))<b.hz)t=b.maxY;return t}
 function los(a,b){ // 視線が建物でさえぎられていないか
   const x0=aX(a),z0=aZ(a),y0=aY(a),dx=wd(aX(b)-x0),dz=wd(aZ(b)-z0),dy=aY(b)-y0,n=Math.ceil(Math.hypot(dx,dz));
@@ -1133,17 +1182,15 @@ function drawScore(){
   el.innerHTML='あなた '+(PL.kills||0)+bots.slice(0,CFG.bots).map(b=>'　'+dot('#'+b.color.toString(16).padStart(6,'0'))+(b.kills||0)).join('')+'　<span style="opacity:.7">先取り '+CFG.goal+'点</span>';
 }
 function scoreKill(a){a.kills=(a.kills||0)+1;drawScore();if(CFG.mode==='pts'&&a.kills>=CFG.goal)finish('goal')}
-function finish(reason){
-  if(over)return;over=true;cleared=true;bgmSet(null);
+function finish(reason){ // 制限時間・先取り達成：暴かれて終わるときと同じ決着の流れに乗せる
+  if(over||ending)return;over=true;cleared=true;
   const pts=CFG.mode==='pts';
   const act=[{n:'あなた',a:PL,alive:true},...bots.slice(0,CFG.bots).map(b=>({n:b.name,a:b,alive:b.st!=='out'}))];
   act.forEach(o=>o.k=o.a.kills||0);
   act.sort((x,y)=>pts?y.k-x.k:(y.alive-x.alive)||(y.k-x.k));
   let rank=1;act.forEach((o,i)=>{if(i>0){const q=act[i-1];if(!(pts?q.k===o.k:(q.alive===o.alive&&q.k===o.k)))rank=i+1}o.r=rank});
-  const me=act.find(o=>o.a===PL);
-  msg.innerHTML=(reason==='time'?'時間切れ！':'先取り達成！')+'<br>あなたは '+me.r+' 位<br><span style="font-size:17px">'+act.map(o=>o.r+'位 '+o.n+'（'+o.k+(pts?'点':'人 暴いた'+(o.alive?'・生存':'・脱落'))+'）').join('<br>')+'</span><br>クリックでもう一度';
-  msg.style.display='flex';sfx(me.r===1?'correct1':'wrong1');
-  if(document.exitPointerLock)document.exitPointerLock();
+  finEnd={reason,pts,list:act};
+  endSequence(reason);
 }
 // ===== 決着：スローモーション → 結果画面（脱落した順に横並び）=====
 function announce(hex){
@@ -1158,13 +1205,13 @@ function checkEnd(){ // オンライン：生き残りが1人以下になった�
   if(practice||ending)return;
   if((over?0:1)+bots.filter(b=>b.st!=='out'&&b.remote).length<=1)endSequence();
 }
-function endSequence(){
-  if(ending)return;ending=true;bgmSet(null);
+function endSequence(reason){
+  if(ending)return;ending=true;bgmSet(null);stopSe(['explosion1','wrong1','correct1']); // ゲーム中の効果音（無敵のメロディなど）を止める
   for(const k in keys)keys[k]=false;
   if(memoOpen){memoOpen=false;memoEl.style.display='none';drawing=false} // メモを開いたままでも、決着で閉じる
   timeScale=0.25;sfx('explosion1',0.6);
   document.getElementById('wo').classList.add('on'); // スローモーションと同時に、ゆっくりホワイトアウト
-  setTimeout(()=>flashMsg('決着！','#ffd23f',1.6),1500); // 「決着」は、スローモーションになってから1.5秒後
+  setTimeout(()=>flashMsg(reason==='time'?'時間切れ！':reason==='goal'?'先取り達成！':'決着！','#ffd23f',1.6),1500); // 「決着」は、スローモーションになってから1.5秒後
   setTimeout(()=>{timeScale=1;showResults()},3300);
 }
 function resActors(){
@@ -1178,10 +1225,18 @@ function resActors(){
 function showResults(){
   const res=document.getElementById('res'),list=resActors(),nOut=outOrder.length;
   const aliveN=list.length-list.filter(x=>outOrder.includes(x.a)).length;
-  res.innerHTML='<h2>けっか</h2><div class="sub">脱落した順（左から）</div><div class="cards">'
-    +list.map((x,i)=>{const out=outOrder.includes(x.a),win=!out&&aliveN===1;
+  let sub='脱落した順（左から）',cards;
+  if(finEnd){ // 制限時間・先取り達成：順位の高い順（左から）
+    const info=resActors();
+    sub=(finEnd.reason==='time'?'時間切れ':'先取り達成')+'　順位の高い順（左から）　'+(finEnd.pts?'暴いた数（点）で順位':'生存→暴いた数の順で順位');
+    cards=finEnd.list.map((o,i)=>{const x=info.find(z=>z.a===o.a)||{name:o.n,num:'',color:'#fff4dc'},win=o.r===1;
+      return '<div class="rc'+(win?' win':'')+'" style="animation-delay:'+(i*0.18)+'s"><div class="rk">'+(win?'👑 ':'')+o.r+'位　'+(finEnd.pts?o.k+'点':'暴いた '+o.k+'人'+(o.alive?'・生存':'・脱落'))+'</div>'
+        +'<div class="rn"><span style="color:'+x.color+'">●</span> '+x.name+(x.me?'（あなた）':'')+'</div><div class="rd">'+(x.num||'???')+'</div></div>'}).join('');
+    const me=finEnd.list.find(o=>o.a===PL);if(me)sfx(me.r===1?'correct1':'wrong1');
+  }else cards=list.map((x,i)=>{const out=outOrder.includes(x.a),win=!out&&aliveN===1;
       return '<div class="rc'+(win?' win':'')+'" style="animation-delay:'+(i*0.18)+'s"><div class="rk">'+(win?'👑 勝者':out?(i+1)+'番目に脱落':'生き残り')+'</div>'
-        +'<div class="rn"><span style="color:'+x.color+'">●</span> '+x.name+(x.me?'（あなた）':'')+'</div><div class="rd">'+(x.num||'???')+'</div></div>'}).join('')
+        +'<div class="rn"><span style="color:'+x.color+'">●</span> '+x.name+(x.me?'（あなた）':'')+'</div><div class="rd">'+(x.num||'???')+'</div></div>'}).join('');
+  res.innerHTML='<h2>けっか</h2><div class="sub">'+sub+'</div><div class="cards">'+cards
     +'</div><div class="rbtn">'+(online?'<button id="rrm">再戦</button><button id="rend" class="alt">おわる</button>':'<button id="rrm">もう一度</button><button id="rend" class="alt">おわる</button>')+'</div><div class="sub" id="rst"></div>';
   res.style.display='flex';msg.style.display='none';
   if(document.exitPointerLock)document.exitPointerLock();
@@ -1196,7 +1251,7 @@ function showResults(){
 function resetMatch(){
   over=false;cleared=false;ending=false;timeScale=1;gbuf='';gauge=0;lastGk=-1;tsel=0;sel=0;ammo.length=0;lastShot=0;hitTimer=0;warpAt=0;
   Object.assign(p,{x:0,z:0,y:0,vy:0,ground:true,yaw:0,pitch:0,inv:0,spd:0,frz:0,jl:2,blind:0,hide:0,cloak:0,xray:0,radar:0,stT:0,jmp:0});
-  outOrder.length=0;PL.kills=0;startInv=false;mi=0;mt=0;memoOpen=false;
+  outOrder.length=0;finEnd=null;PL.kills=0;startInv=false;mi=0;mt=0;memoOpen=false;
   for(const k in keys)keys[k]=false;
   for(const tr of traps){try{scene.remove(tr.m)}catch(e){}}traps.length=0;
   memoData.length=0;
@@ -1248,7 +1303,7 @@ function botHit(t,by){ // ヒント弾が当たる：消えてランダム位置
   t.st='gone';t.gone=GONE;t.g.visible=false;t.frz=0;
 }
 function botThink(b,dt){
-  b.gauge=Math.min(GMAX,b.gauge+dt/120);b.fcd-=dt;
+  b.gauge=Math.min(GMAX,b.gauge+dt/CFG.gsec);b.fcd-=dt;
   const others=[PL,...bots].filter(o=>o!==b&&aLive(o));
   b.fv=null;let near=null,nd=1e9;const vis={};
   for(const o of others){
@@ -1271,7 +1326,7 @@ function botThink(b,dt){
       const miss=Math.random()<MISS,ans=h.ans([...aNum(near)].map(Number),a.q),k=aKey(near);
       if(!miss){ // 3発に1発は外れる
         b.cand[k]=(b.cand[k]||ALL).filter(n=>h.ans([...n].map(Number),a.q)===ans);
-        b.gauge=Math.min(GMAX,b.gauge+0.5);
+        b.gauge=Math.min(GMAX,b.gauge+CFG.ghit);
         botHit(near,b);
       }
     }
@@ -1298,14 +1353,14 @@ const HELP=`<span class="h3">遊び方</span><br>
 他のプレイヤーの3桁の数字を暴いて、全員を脱落させる。暴き合い。<br>
 ゲーム開始時の15秒間と、復活後の5秒間は無敵で、誰の数字も見えません。<br>
 <span class="h2">キー操作</span><br>
-<span class="h1">WASD：移動</span> <span class="h1">Space：ジャンプ（二段ジャンプ）</span> <span class="h1">Shift：ステップ（移動中に押す。3秒に1回）</span> <span class="h1">マウス／矢印キー：視点移動</span> <span class="h1">クリックかF：アイテムを使う</span> <span class="h1">ホイール：アイテム選択</span> <span class="h1">Q/E：ヒントの数値変更</span> <span class="h1">Tab：暴く相手の選択変更</span> <span class="h1">数字キー3桁＋Enter：暴く（ゲージ1つ消費。2分で1ゲージ溜まる／ヒント弾を当てると0.5ゲージ溜まる）</span><br>
+<span class="h1">WASD：移動</span> <span class="h1">Space：ジャンプ（二段ジャンプ）</span> <span class="h1">Shift：ステップ（移動中に押す。3秒に1回）</span> <span class="h1">マウス／矢印キー：視点移動</span> <span class="h1">クリックかF：アイテムを使う</span> <span class="h1">ホイール：アイテム選択</span> <span class="h1">Q/E：ヒントの数値変更</span> <span class="h1">Tab：暴く相手の選択変更</span> <span class="h1">数字キー3桁＋Enter：暴く（ゲージ1つ消費。初期設定では2分で1ゲージ溜まり、ヒント弾を当てると0.5ゲージ溜まる。溜まる速さと量は「詳細設定」で変えられます）</span><br>
 <span class="h1">M：メモ（Tabで相手ごとにページを切り替えできる）</span><br>
 <span class="h1">Esc／P：一時停止（各種設定が可能）</span><br>
 <span class="h2">ルール設定</span><br>
 ヒット＆ブロー：位置も数字も合っている数（ヒット）と、数字だけ合っている数（ブロー）が分かる。<br>
 ポイント制：数字を暴かれても、数秒後に新しい数字で復活します。暴くたびに1点。`;
 const tgb=(k,on,t,dis)=>'<button class="tg'+(on?' on':'')+'" data-k="'+k+'"'+(dis?' disabled':'')+'>'+t+'</button>';
-let ruleMode='solo';
+let ruleMode='solo',detailOpen=false;
 function defName(){let n=getName();if(!n){n=randName();setName(n)}return n}
 function nameOk(){const n=(document.getElementById('nname').value||'').trim().slice(0,8)||('プレイヤー'+((Math.random()*90+10)|0));setName(n);NET.name=n;return n}
 function bindMulti(){
@@ -1342,20 +1397,25 @@ function lobbyDraw(note){
 }
 function ruleDraw(note){
   const C=CFG,cn=['赤＝攻撃','青＝防御'],multi=ruleMode==='multi';
+  const det=detailOpen?('<div style="border-left:4px solid #b9a8e8;padding-left:12px;margin:2px 0 8px">'
+    +'<div class="rw">背中の数字：'+tgb('num',C.num,C.num?'あり':'なし')+'</div>'
+    +'<div class="rw">ワープ：'+tgb('warp',C.warp,C.warp?'あり':'なし')+'</div>'
+    +'<div class="rw">出る宝箱：'+cn.map((t,i)=>tgb('ch'+(i+1),C.ch[i+1],t)).join('')+'</div>'
+    +'<div class="rw">宝箱の数：'+Array.from({length:10},(_,i)=>tgb('chn'+(i+1),C.chests===i+1,String(i+1))).join('')+' <span style="opacity:.7;font-size:13px">1＝少なく復活もゆっくり　10＝多く復活も速い（初期値5）</span></div>'
+    +'<div class="rw">暴いた結果：'+tgb('hb0',!C.hb,'あたり／はずれのみ')+tgb('hb1',C.hb,'ヒット＆ブロー')+'</div>'
+    +'<div class="rw">ゲージが1つ溜まる時間：'+[[240,'4分'],[180,'3分'],[120,'2分'],[90,'1分30秒'],[60,'1分']].map(([n,t])=>tgb('gsec'+n,C.gsec===n,t)).join('')+' <span style="opacity:.7;font-size:13px">初期値 2分</span></div>'
+    +'<div class="rw">ヒント弾が当たったとき溜まる量：'+[0.25,0.5,0.75,1].map(n=>tgb('ghit'+n,C.ghit===n,String(n))).join('')+' <span style="opacity:.7;font-size:13px">初期値 0.5（ゲージ1つ＝1）</span></div>'
+    +'</div>'):'';
   hpanel.innerHTML='<b>'+(multi?'みんなであそぶ':'1人であそぶ')+'</b>　<span style="opacity:.7">（設定はこの端末に保存されます）</span>'
    +(multi?'<div class="rw">名前：<input type="text" id="nname" maxlength="8" value="'+defName()+'" placeholder="8文字まで"></div>':'')
-   +'<div class="rw">背中の数字：'+tgb('num',C.num,C.num?'あり':'なし')+'</div>'
-   +'<div class="rw">ワープ：'+tgb('warp',C.warp,C.warp?'あり':'なし')+'</div>'
-   +'<div class="rw">出る宝箱：'+cn.map((t,i)=>tgb('ch'+(i+1),C.ch[i+1],t)).join('')+'</div>'
-   +'<div class="rw">宝箱の数：'+Array.from({length:10},(_,i)=>tgb('chn'+(i+1),C.chests===i+1,String(i+1))).join('')+' <span style="opacity:.7;font-size:13px">1＝少なく復活もゆっくり　10＝多く復活も速い（初期値5）</span></div>'
    +(multi?'<div class="rw">ボットの人数：'+[0,1,2,3].map(n=>tgb('obots'+n,C.obots===n,n+'人'+(n?'（準備中）':''),n>0)).join('')+'</div>'
           :'<div class="rw">ボットの人数：'+[1,2,3].map(n=>tgb('bots'+n,C.bots===n,n+'人')).join('')+'</div>'
            +'<div class="rw">ボットの強さ：'+['弱い','ふつう','強い'].map((t,i)=>tgb('diff'+i,C.diff===i,t)).join('')+'</div>'
            +'<div class="rw">ルール：'+tgb('mode0',C.mode==='surv','サバイバル')+tgb('mode1',C.mode==='pts','ポイント制')+'</div>'
            +'<div class="rw">制限時間：'+[[0,'なし'],[180,'3分'],[300,'5分'],[600,'10分']].map(([s,t])=>tgb('time'+s,C.time===s,t)).join('')+'</div>'
            +(C.mode==='pts'?'<div class="rw">先取り点数：'+[3,5,10].map(n=>tgb('goal'+n,C.goal===n,n+'点')).join('')+'</div>':''))
-   +'<div class="rw">暴いた結果：'+tgb('hb0',!C.hb,'あたり／はずれのみ')+tgb('hb1',C.hb,'ヒット＆ブロー')+'</div>'
    +'<div class="rw">マップの広さ：'+[[90,'標準 90m'],[120,'広い 120m'],[150,'特大 150m']].map(([m,t])=>tgb('map'+m,C.map===m,t)).join('')+'</div>'
+   +'<div class="rw"><button class="tg" data-k="detail">詳細設定 '+(detailOpen?'▲':'▼')+'</button> <span style="opacity:.7;font-size:13px">背中の数字・ワープ・宝箱・暴いた結果・ゲージ</span></div>'+det
    +'<div style="font-size:13px;opacity:.75">'+(multi?'オンラインは今のところ、サバイバル（制限時間なし）で、人どうしの対戦です。ボット入り・ポイント制・制限時間は次のStageで対応します。':'サバイバル：全員を脱落させたら勝ち。ポイント制：数字を暴かれても、数秒後に新しい数字で復活し、暴いた数で競います（先取り点数か制限時間で終了）。制限時間つきのサバイバルは、「生存」「暴いた数」の順で順位が決まります。')
    +' 背中の数字なし：数字は表示されず、ヒントだけで推理します。ヒット＆ブロー：暴けなかったとき、ヒット（数字も位置も合い）とブロー（数字だけ合い）の数が分かります。マップの広さを変えた場合は、スタート時に読み込み直します。</div>'
    +(note?'<div style="color:#d22">'+note+'</div>':'')
@@ -1370,7 +1430,8 @@ function ruleDraw(note){
 hpanel.addEventListener('click',e=>{
   const b=e.target.closest&&e.target.closest('button[data-k]');if(!b)return;
   const k=b.dataset.k;let note='';
-  if(k==='num')CFG.num=!CFG.num;
+  if(k==='detail')detailOpen=!detailOpen;
+  else if(k==='num')CFG.num=!CFG.num;
   else if(k==='warp')CFG.warp=!CFG.warp;
   else if(k.startsWith('chn'))CFG.chests=+k.slice(3);
   else if(k[0]==='c'){const i=+k[2];if(i>=1&&i<=2)CFG.ch[i]=!CFG.ch[i]}
@@ -1379,6 +1440,8 @@ hpanel.addEventListener('click',e=>{
   else if(k==='mode0'||k==='mode1')CFG.mode=k==='mode1'?'pts':'surv';
   else if(k.startsWith('time'))CFG.time=+k.slice(4);
   else if(k.startsWith('goal'))CFG.goal=+k.slice(4);
+  else if(k.startsWith('gsec'))CFG.gsec=+k.slice(4);
+  else if(k.startsWith('ghit'))CFG.ghit=+k.slice(4);
   else if(k.startsWith('obots'))CFG.obots=+k.slice(5);
   else if(k.startsWith('bots'))CFG.bots=+k.slice(4);
   else if(k.startsWith('map'))CFG.map=+k.slice(3);
@@ -1410,7 +1473,7 @@ const DIFFS=[
   {react:1.1,miss:0.45,spd:7,turn:1.55,ait:0.33,guess:5,rd:0.35,wg:1.4},
   {react:0.5,miss:0.22,spd:8,turn:1.75,ait:0.25,guess:6,rd:0,   wg:1.0}];
 function startGame(prac,onl){ // 開始：自分とボットは15秒間、無敵かつ誰の数字も見えない
-  online=onl===true;practice=prac===true;ending=false;timeScale=1;outOrder.length=0;
+  online=onl===true;practice=prac===true;ending=false;timeScale=1;outOrder.length=0;finEnd=null;
   if(CFG.map!==S&&!online){ // マップの広さが変わっていたら、ここで保存して読み込み直し、そのまま開始する
     if(saveCfg()){try{sessionStorage.setItem('nh_boot',practice?'p':'s')}catch(e){}hpanel.innerHTML='マップを読み込み直しています…';location.reload();return}
     CFG.map=S;ruleDraw('この環境ではマップの広さを保存できないため、変更できません');return;
@@ -1475,6 +1538,7 @@ function loop(t){
     if(!hit(p.x,p.z+dz,p.y,R))p.z+=dz;
     p.x=wd(p.x);p.z=wd(p.z);
   }
+  sepStep(); // プレイヤー同士（自分・ボット・ほかの参加者）は重ならず、押し合う
   // ジャンプと重力
   p.vy-=25*dt;p.y+=p.vy*dt;
   const fh=floorAt(p.x,p.z,p.y,R);
@@ -1496,7 +1560,7 @@ function loop(t){
     if(trig){scene.remove(tr.m);traps.splice(i,1)}
   }
   drawCnt();
-  gauge=Math.min(GMAX,gauge+dt/120);
+  gauge=Math.min(GMAX,gauge+dt/CFG.gsec);
   const gk=Math.floor(gauge*30);if(gk!==lastGk){lastGk=gk;drawNum()}
   // ボット
   for(const b of bots){
