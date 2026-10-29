@@ -23,6 +23,8 @@ export function cleanCfg(s) {
   if (s.mode === "surv" || s.mode === "pts") c.mode = s.mode;
   if ([0, 180, 300, 600].includes(s.time)) c.time = s.time;
   if ([3, 5, 10].includes(s.goal)) c.goal = s.goal;
+  if ([60, 90, 120, 180, 240].includes(s.gsec)) c.gsec = s.gsec; // ゲージが1つ溜まる秒数
+  if ([0.25, 0.5, 0.75, 1].includes(s.ghit)) c.ghit = s.ghit; // ヒント弾が当たったとき溜まる量
   return c;
 }
 
