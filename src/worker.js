@@ -7,6 +7,15 @@ export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.core = new RoomCore();
+    this.timer = null;
+  }
+  // 見張り番：5秒ごとに、黙り込んだ接続を「切れた」と見なし、待ちきれなかった席を片づける。部屋が空になったら止める
+  watch() {
+    if (this.timer) return;
+    this.timer = setInterval(() => {
+      try { this.core.sweep(); } catch (e) { /* 見張りが止まらないように */ }
+      if (this.core.members.size === 0) { clearInterval(this.timer); this.timer = null; }
+    }, 5000);
   }
   async fetch(request) {
     if (request.headers.get("Upgrade") !== "websocket") {
@@ -22,16 +31,22 @@ export class Room extends DurableObject {
     const r = this.core.join(sock, {
       name: url.searchParams.get("name"),
       create: url.searchParams.get("create") === "1",
+      key: url.searchParams.get("key"),
+      resume: url.searchParams.get("resume") === "1",
     });
     if (!r.ok) {
-      sock.send(JSON.stringify({ t: "err", m: r.error }));
+      sock.send(JSON.stringify({ t: "err", m: r.error, gone: !!r.gone }));
       sock.close();
     } else {
       const id = r.id;
-      server.addEventListener("message", (e) => this.core.message(id, typeof e.data === "string" ? e.data : ""));
-      const bye = () => this.core.leave(id);
+      server.addEventListener("message", (e) => {
+        try { this.core.message(id, typeof e.data === "string" ? e.data : "", sock); } catch (err) { /* 1通の不具合で接続を巻き込まない */ }
+      });
+      // 切れても、すぐには席を消さない（つなぎ直しを待つ）。待ちきれなかった席は watch() が片づける
+      const bye = () => { try { this.core.detach(id, sock); } catch (err) { /* 無視 */ } };
       server.addEventListener("close", bye);
       server.addEventListener("error", bye);
+      this.watch();
     }
     return new Response(null, { status: 101, webSocket: client });
   }

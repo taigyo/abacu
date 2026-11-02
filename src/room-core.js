@@ -3,6 +3,8 @@
 export const MAX_PLAYERS = 4;
 const COLORS = ["#ff6b9d", "#2ec4b6", "#ffd23f", "#7fb0ff"];
 const MAX_MSG = 4000;
+const MAX_QUEUE = 300;
+const cleanKey = (k) => (typeof k === "string" && /^[A-Za-z0-9]{8,40}$/.test(k) ? k : null);
 
 const num = (v) => typeof v === "number" && Number.isFinite(v);
 const cleanName = (n) => String(n || "").replace(/[<>&"'\u0000-\u001f]/g, "").trim().slice(0, 8) || "プレイヤー";
@@ -29,9 +31,14 @@ export function cleanCfg(s) {
 }
 
 export class RoomCore {
-  constructor({ now = () => Date.now(), startDelay = 3000 } = {}) {
+  // grace：試合中、つながりが切れた人の席を空けて待つ時間／lobbyGrace：待合室で待つ時間（タブを閉じた人が残り続けないよう短め）
+  // stale：この時間なにも届かない人は、切れていると見なす（無線が黙って切れた場合の見張り）
+  constructor({ now = () => Date.now(), startDelay = 3000, grace = 30000, lobbyGrace = 15000, stale = 20000 } = {}) {
     this.now = now;
     this.startDelay = startDelay;
+    this.grace = grace;
+    this.lobbyGrace = lobbyGrace;
+    this.stale = stale;
     this.reset();
   }
   reset() {
@@ -43,16 +50,23 @@ export class RoomCore {
     this.votes = new Set(); // 「再戦」を押した人
   }
   list() {
-    return [...this.members.values()].map((m) => ({ id: m.id, name: m.name, color: m.color, host: m.id === this.hostId, ready: !!m.num }));
+    return [...this.members.values()].map((m) => ({ id: m.id, name: m.name, color: m.color, host: m.id === this.hostId, ready: !!m.num, away: !m.ws }));
   }
   send(m, obj) {
+    if (!m.ws) { // つなぎ直し待ちの人：位置以外は取っておいて、戻ってきたらまとめて届ける（弾の命中・宝箱などを取りこぼさないため）
+      if (obj.t !== "pos") { m.q.push(obj); if (m.q.length > MAX_QUEUE) m.q.shift(); }
+      return;
+    }
     try { m.ws.send(JSON.stringify(obj)); } catch (e) { /* 切れた相手には送れないだけ */ }
   }
   broadcast(obj, exceptId) {
     for (const m of this.members.values()) if (m.id !== exceptId) this.send(m, obj);
   }
   // 戻り値：{ok:true,id} または {ok:false,error}
-  join(ws, { name, create }) {
+  join(ws, { name, create, key, resume }) {
+    this.sweep();
+    const k = cleanKey(key);
+    if (resume) return this.resumeJoin(ws, k);
     if (this.members.size === 0) {
       if (!create) return { ok: false, error: "部屋が見つかりません" };
       this.reset();
@@ -65,16 +79,63 @@ export class RoomCore {
     const used = new Set([...this.members.values()].map((m) => m.color));
     const color = COLORS.find((c) => !used.has(c)) || COLORS[0];
     const id = this.nextId++;
-    const m = { id, ws, name: cleanName(name), color, last: 0, num: null };
+    const m = { id, ws, name: cleanName(name), color, last: 0, num: null, key: k, seen: this.now(), away: 0, q: [] };
     this.members.set(id, m);
     if (this.hostId === null) this.hostId = id;
     this.send(m, { t: "welcome", id, host: id === this.hostId, room: null, cfg: this.cfg, members: this.list(), now: this.now() });
     this.broadcast({ t: "members", members: this.list() }, id);
     return { ok: true, id };
   }
-  message(id, raw) {
+  // つなぎ直し：同じ key の席があれば、同じ id・同じ数字のまま新しい接続に引き継ぐ
+  resumeJoin(ws, key) {
+    const m = key && [...this.members.values()].find((o) => o.key === key);
+    if (!m) return { ok: false, error: this.members.size === 0 ? "部屋が見つかりません" : "つなぎ直せませんでした", gone: true };
+    const old = m.ws;
+    m.ws = ws;
+    m.away = 0;
+    m.seen = this.now();
+    if (old && old !== ws) { try { old.close(); } catch (e) { /* 切れた */ } }
+    this.send(m, { t: "resumed", id: m.id, host: m.id === this.hostId, cfg: this.cfg, phase: this.phase, members: this.list(), now: this.now() });
+    const q = m.q;
+    m.q = [];
+    for (const o of q) this.send(m, o);
+    this.broadcast({ t: "back", id: m.id }, m.id);
+    this.broadcast({ t: "members", members: this.list() }, m.id);
+    return { ok: true, id: m.id, resumed: true };
+  }
+  // 接続が切れた：すぐには席を消さず、つなぎ直しを待つ。切れたのが古い接続なら（すでに新しい接続に替わっていれば）何もしない
+  detach(id, ws) {
     const m = this.members.get(id);
-    if (!m || typeof raw !== "string" || raw.length > MAX_MSG) return;
+    if (!m || m.ws !== ws) return false;
+    m.ws = null;
+    m.away = this.now();
+    this.broadcast({ t: "away", id }, id);
+    this.broadcast({ t: "members", members: this.list() }, id);
+    return true;
+  }
+  isCurrent(id, ws) {
+    const m = this.members.get(id);
+    return !!m && m.ws === ws;
+  }
+  // 定期的に呼ぶ：黙り込んだ接続を「切れた」扱いにし、待ちきれなかった席を片づける
+  sweep() {
+    const t = this.now();
+    const grace = this.phase === "playing" ? this.grace : this.lobbyGrace;
+    for (const m of [...this.members.values()]) {
+      if (m.ws && t - m.seen > this.stale) {
+        const w = m.ws;
+        this.detach(m.id, w);
+        try { w.close(); } catch (e) { /* 切れた */ }
+      } else if (!m.ws && t - m.away > grace) {
+        this.leave(m.id);
+      }
+    }
+  }
+  message(id, raw, from) {
+    const m = this.members.get(id);
+    if (!m || (from !== undefined && m.ws !== from)) return; // 入れ替わった古い接続からの声は聞かない
+    m.seen = this.now();
+    if (typeof raw !== "string" || raw.length > MAX_MSG) return;
     let d;
     try { d = JSON.parse(raw); } catch (e) { return; }
     if (!d || typeof d !== "object") return;
@@ -98,6 +159,7 @@ export class RoomCore {
       }
       case "start": {
         if (id !== this.hostId || this.phase !== "lobby" || this.members.size < 2 || !this.cfg) break;
+        if ([...this.members.values()].some((o) => !o.ws)) { this.send(m, { t: "notice", m: "つながりが切れている人がいます。少し待ってください" }); break; }
         if ([...this.members.values()].some((o) => !o.num)) { this.send(m, { t: "notice", m: "全員が数字を決めるとスタートできます" }); break; }
         this.phase = "playing";
         this.votes.clear();
@@ -112,6 +174,12 @@ export class RoomCore {
         this.broadcast({ t: "rematch", votes: this.votes.size, total: this.members.size });
         this.checkRematch();
         break;
+      case "bye": { // 自分から抜ける（待たずに、すぐ席を空ける）
+        const w = m.ws;
+        this.leave(id);
+        try { w.close(); } catch (e) { /* 切れた */ }
+        break;
+      }
       case "close": { // 部屋を解散して、全員を終わらせる
         this.broadcast({ t: "closed" });
         const all = [...this.members.values()];
@@ -119,10 +187,10 @@ export class RoomCore {
         for (const o of all) { try { o.ws.close(); } catch (e) { /* 切れた */ } }
         break;
       }
-      case "pos": { // 位置は、そのまま他の人へ中継するだけ（1秒に40回まで）
+      case "pos": { // 位置は、そのまま他の人へ中継するだけ（1秒に50回まで）
         if (this.phase !== "playing" || !num(d.x) || !num(d.z) || !num(d.y) || !num(d.yaw)) break;
         const t = this.now();
-        if (t - m.last < 25) break;
+        if (t - m.last < 20) break;
         m.last = t;
         this.broadcast({ t: "pos", id, x: d.x, z: d.z, y: d.y, yaw: d.yaw, f: num(d.f) ? d.f | 0 : 0, ts: t }, id);
         break;
