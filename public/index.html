@@ -166,7 +166,7 @@ let matchT=0; // 「ためす」モード（誰もいない空間）
 const saveCfg=()=>{try{localStorage.setItem('nh_cfg',JSON.stringify(CFG));return true}catch(e){return false}};
 
 // ===== オンライン（Stage 19：部屋・参加者・位置の同期）=====
-const NET={myNumSet:null,draft:null,ws:null,id:0,host:false,room:'',members:[],cfg:null,ghosts:{},off:0,bestRtt:1e9,nums:{},chestList:null,on:false,tq:0,name:'',retry:0,started:false};
+const NET={myNumSet:null,draft:null,ws:null,id:0,host:false,room:'',members:[],cfg:null,ghosts:{},off:0,bestRtt:1e9,nums:{},chestList:null,on:false,tq:0,name:'',retry:0,started:false,key:'',joined:false,lastRx:0,rtt:0,rc:0,gaveUp:false,bye:false,downAt:0,tmr:0,attemptAt:0};
 const netNow=()=>Date.now()+NET.off;
 const slotOf=id=>bots.find(b=>b.remote===id);
 const hostId=()=>{const h=NET.members.find(m=>m.host);return h?h.id:0};
@@ -178,24 +178,76 @@ const randName=()=>['きつね','たぬき','うさぎ','ぺんぎん','くま',
 const getName=()=>{try{return localStorage.getItem('nh_name')||''}catch(e){return ''}};
 const setName=n=>{try{localStorage.setItem('nh_name',n)}catch(e){}};
 const cfgText=c=>[c.mode==='pts'?'ポイント制（先取り'+c.goal+'点）':'サバイバル',c.time?'制限'+(c.time/60)+'分':'制限なし','マップ'+c.map+'m','背中の数字'+(c.num?'あり':'なし'),'ワープ'+(c.warp?'あり':'なし'),c.hb?'ヒット＆ブロー':'あたり/はずれのみ','宝箱'+(c.chests||5),'ゲージ'+(c.gsec||120)+'秒で1／命中+'+(c.ghit||0.5)].join('　');
-function netOpen(code,create){
-  NET.room=code;NET.host=false;NET.started=false;NET.members=[];
+const NET_GIVEUP=28000; // つなぎ直しをあきらめるまで（サーバーが席を取っておく時間より、少し短く）
+const newKey=()=>{const A='abcdefghijklmnopqrstuvwxyz0123456789';let s='';for(let i=0;i<20;i++)s+=A[(Math.random()*A.length)|0];return s};
+function netOpen(code,create,resume){
+  if(!resume){NET.room=code;NET.host=false;NET.started=false;NET.members=[];NET.joined=false;NET.gaveUp=false;NET.bye=false;NET.rc=0;NET.downAt=0;if(!NET.key)NET.key=newKey()}
+  else NET.attemptAt=Date.now();
   const proto=location.protocol==='https:'?'wss://':'ws://';
-  let ws;try{ws=new WebSocket(proto+location.host+'/ws/'+code+'?name='+encodeURIComponent(NET.name)+(create?'&create=1':''))}catch(e){netFail('つなげませんでした。オンラインは公開サイト（abacu.gyoz.workers.dev）で遊べます');return}
+  let ws;try{ws=new WebSocket(proto+location.host+'/ws/'+code+'?name='+encodeURIComponent(NET.name)+'&key='+NET.key+(resume?'&resume=1':(create?'&create=1':'')))}catch(e){if(resume){netDown(false);return}netFail('つなげませんでした。オンラインは公開サイト（abacu.gyoz.workers.dev）で遊べます');return}
   NET.ws=ws;let opened=false;
-  ws.onopen=()=>{opened=true;for(let i=0;i<5;i++)setTimeout(()=>netSend({t:'ping',c:Date.now()}),i*250)};
-  ws.onmessage=ev=>{let d;try{d=JSON.parse(ev.data)}catch(e){return}netMsg(d,create)};
-  ws.onerror=()=>{if(!opened)netFail('つなげませんでした。オンラインは公開サイト（abacu.gyoz.workers.dev）で遊べます')};
-  ws.onclose=()=>{NET.on=false;if(online&&started){flashMsg('つながりが切れました','#f66',6);for(const k in NET.ghosts){NET.ghosts[k].g.visible=false}}else if(opened&&!NET.started)netFail('つながりが切れました')};
+  ws.onopen=()=>{if(NET.ws!==ws)return;opened=true;NET.lastRx=Date.now();for(let i=0;i<5;i++)setTimeout(()=>netSend({t:'ping',c:Date.now()}),i*250)};
+  ws.onmessage=ev=>{if(NET.ws!==ws)return;NET.lastRx=Date.now();let d;try{d=JSON.parse(ev.data)}catch(e){return}netMsg(d,create)};
+  ws.onerror=()=>{if(NET.ws!==ws||resume)return;if(!opened)netFail('つなげませんでした。オンラインは公開サイト（abacu.gyoz.workers.dev）で遊べます')};
+  ws.onclose=()=>{if(NET.ws!==ws)return;NET.ws=null;netDown(opened)};
 }
+// つながりが切れたとき：入室済みなら、あきらめずに同じ席へつなぎ直す（サーバーが席を取っておいてくれる）
+function netDown(opened){
+  if(NET.bye||NET.gaveUp)return;
+  if(NET.joined||NET.rc>0){
+    if(!NET.downAt)NET.downAt=Date.now();
+    netBanner('つながり直しています…');netInfo();
+    netRetry();return}
+  if(opened)netFail('つながりが切れました');
+}
+function netRetry(){
+  clearTimeout(NET.tmr);if(!NET.downAt)NET.downAt=Date.now();
+  if(Date.now()-NET.downAt>NET_GIVEUP){netGiveUp();return}
+  const W=[300,700,1200,2000],wait=W[Math.min(NET.rc,W.length-1)];NET.rc++;
+  NET.tmr=setTimeout(()=>{if(NET.bye||NET.gaveUp||(NET.ws&&NET.ws.readyState<=1))return;netOpen(NET.room,false,true)},wait);
+}
+function netGiveUp(m){
+  NET.gaveUp=true;clearTimeout(NET.tmr);NET.ws=null;NET.on=false;m=m||'つながりが切れました';
+  if(online&&started){netBanner(m+'（ページを読み込み直してください）');flashMsg(m,'#f66',6)}
+  else{netBanner('');netFail(m)}
+}
+function netBanner(t){
+  let e=document.getElementById('netbn');
+  if(!t){if(e)e.style.display='none';return}
+  if(!e){e=document.createElement('div');e.id='netbn';e.style.cssText='position:fixed;left:50%;top:max(100px,calc(env(safe-area-inset-top) + 100px));transform:translateX(-50%);z-index:61;pointer-events:none;font-weight:900;font-size:15px;color:#fff4dc;background:rgba(210,60,60,.92);border:3px solid #fff4dc;border-radius:999px;padding:6px 16px;text-align:center;max-width:92vw';document.body.appendChild(e)}
+  e.textContent=t;e.style.display='block';
+}
+function netInfo(){ // 試合中だけ、画面の下に通信の遅れ（ms）を小さく出す。ラグの原因を探るための目安
+  let e=document.getElementById('netinfo');
+  if(!(online&&started&&NET.on&&NET.rtt&&!NET.downAt)){if(e)e.style.display='none';return}
+  if(!e){e=document.createElement('div');e.id='netinfo';e.style.cssText='position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:6;pointer-events:none;font-size:11px;font-weight:700;opacity:.75;text-shadow:0 0 3px #2b2250,0 0 3px #2b2250';document.body.appendChild(e)}
+  const r=Math.round(NET.rtt);e.textContent='通信 '+r+'ms';e.style.color=r<80?'#8f8':r<150?'#fd6':'#f88';e.style.display='block';
+}
+function netDead(){const ws=NET.ws;NET.ws=null;try{if(ws)ws.close()}catch(e){}netDown(true)} // 黙って切れていた：古い接続は捨てて、つなぎ直す
+setInterval(()=>{ // 3秒ごとの見張り：生きている合図（ping）を送り、12秒なにも届かなければ切れたと見なす
+  if(NET.bye||NET.gaveUp)return;
+  const ws=NET.ws,now=Date.now();
+  if(ws&&ws.readyState===0&&NET.rc>0&&now-NET.attemptAt>6000){netDead();return} // つなぎ直しの試みが宙ぶらりん
+  if(ws&&ws.readyState===1){netSend({t:'ping',c:now});if(now-NET.lastRx>12000)netDead()}
+  else if(NET.downAt&&now-NET.downAt>NET_GIVEUP)netGiveUp();
+},3000);
+document.addEventListener('visibilitychange',()=>{ // 画面に戻ってきたとき：すぐ確かめて、切れていたら早めにつなぎ直す
+  if(document.hidden||NET.bye||NET.gaveUp||!NET.joined)return;
+  const ws=NET.ws,t=Date.now();
+  if(ws&&ws.readyState===1){netSend({t:'ping',c:t});setTimeout(()=>{if(NET.ws===ws&&NET.lastRx<t)netDead()},2500)}
+  else if(!ws){NET.rc=0;netRetry()}
+});
+addEventListener('online',()=>{if(NET.bye||NET.gaveUp||!NET.joined||NET.ws)return;NET.rc=0;netRetry()});
+addEventListener('pagehide',e=>{if(e.persisted)return;NET.bye=true;netSend({t:'bye'})}); // ページを閉じる・読み込み直すときは、席をすぐ空ける
 function netFail(m){NET.ws=null;hpanel.dataset.k='multi';hmain.style.display='none';hpanel.style.display='block';ruleMode='multi';ruleDraw(m)}
 function netMsg(d,create){
   switch(d.t){
     case 'err':
+      if(NET.joined||NET.rc>0){netGiveUp(d.m);return} // つなぎ直しに失敗（席がもう無い・部屋が閉じた）
       if(create&&d.m==='このコードは使用中です'&&NET.retry++<3){netOpen(newCode(),true);return}
       netFail(d.m);break;
     case 'welcome':
-      NET.id=d.id;NET.host=d.host;NET.members=d.members;NET.cfg=d.host?CFG:cfgFrom(d.cfg);
+      NET.joined=true;NET.id=d.id;NET.host=d.host;NET.members=d.members;NET.cfg=d.host?CFG:cfgFrom(d.cfg);
       if(d.host)netSend({t:'cfg',cfg:CFG});
       else if(NET.cfg.map!==S){ // 広さが違う：自分の設定の広さだけ合わせて、読み込み直してから入り直す
         try{const c=cfgFrom(JSON.parse(localStorage.getItem('nh_cfg')||'{}'));c.map=NET.cfg.map;localStorage.setItem('nh_cfg',JSON.stringify(c));sessionStorage.setItem('nh_boot','join:'+NET.room);location.reload()}catch(e){netFail('マップの広さを合わせられませんでした')}
@@ -210,7 +262,15 @@ function netMsg(d,create){
       NET.cfg=cfgFrom(d.cfg);
       if(!NET.host&&NET.cfg.map!==S){try{const c=cfgFrom(JSON.parse(localStorage.getItem('nh_cfg')||'{}'));c.map=NET.cfg.map;localStorage.setItem('nh_cfg',JSON.stringify(c));sessionStorage.setItem('nh_boot','join:'+NET.room);location.reload()}catch(e){}return}
       if(hpanel.dataset.k==='lobby')lobbyDraw();break;
-    case 'pong':{const rtt=Date.now()-d.c;if(rtt<NET.bestRtt){NET.bestRtt=rtt;NET.off=d.s+rtt/2-Date.now()}break}
+    case 'pong':{const rtt=Date.now()-d.c;NET.rtt=NET.rtt?NET.rtt*0.7+rtt*0.3:rtt;if(rtt<NET.bestRtt){NET.bestRtt=rtt;NET.off=d.s+rtt/2-Date.now()}netInfo();break}
+    case 'resumed':{ // つなぎ直せた：同じ席に戻った。切れている間に届くはずだった知らせは、このあとまとめて届く
+      NET.id=d.id;NET.host=d.host;NET.members=d.members;NET.rc=0;NET.downAt=0;NET.bestRtt=1e9;NET.lastRx=Date.now();netBanner('');
+      if(online&&started){flashMsg('つながりました','#6f6',1.2);if(NET.host)hostSendChests()} // 切れている間の宝箱の変化を、ホストがみんなに知らせ直す
+      if(hpanel.dataset.k==='lobby'&&!NET.started)lobbyDraw();
+      for(let i=0;i<3;i++)setTimeout(()=>netSend({t:'ping',c:Date.now()}),i*250);
+      break}
+    case 'away':{const m=NET.members.find(x=>x.id===d.id);if(m)m.away=true;const b=slotOf(d.id);if(online&&started&&b)flashMsg((b.name||'だれか')+'のつながりが不安定です','#fc6',1.4);if(hpanel.dataset.k==='lobby'&&!NET.started)lobbyDraw();break}
+    case 'back':{const m=NET.members.find(x=>x.id===d.id);if(m)m.away=false;const b=slotOf(d.id);if(online&&started&&b)flashMsg((b.name||'だれか')+'が戻りました','#6f6',1);break}
     case 'numres':
       if(d.ok){NET.myNumSet=d.n;NET.draft=d.n}if(hpanel.dataset.k==='lobby')lobbyDraw(d.ok?'':d.m);break;
     case 'notice':if(hpanel.dataset.k==='lobby')lobbyDraw(d.m);break;
@@ -223,6 +283,15 @@ function netMsg(d,create){
       setTimeout(startOnline,Math.max(0,d.t0-netNow()));break;
     case 'pos':{
       const b=slotOf(d.id);if(!b)break;
+      { // 前の知らせとの差から、動く速さを求める（通信の遅れを埋める先読みに使う）。ワープや再出現のような大きな移動は、速さに入れずにその場へ飛ばす
+        const dtp=b.pts?(d.ts-b.pts)/1000:0;
+        if(dtp>=0.01&&dtp<0.5){
+          const dx=wd(d.x-b.px),dz=wd(d.z-b.pz),dist=Math.hypot(dx,dz);
+          if(dist<3){const vx=dx/dtp,vz=dz/dtp,vm=Math.hypot(vx,vz),k=vm>14?14/vm:1;b.vx=(b.vx||0)*0.4+vx*k*0.6;b.vz=(b.vz||0)*0.4+vz*k*0.6}
+          else{b.vx=b.vz=0;if(dist>8){b.x=d.x;b.z=d.z}}
+        }else if(b.pts&&dtp>=0.5){b.vx=b.vz=0}
+        if(dtp>=0.01||!b.pts){b.px=d.x;b.pz=d.z;b.pts=d.ts}
+      }
       b.tx=d.x;b.tz=d.z;b.ty=d.y;b.tyaw=d.yaw+Math.PI;const f=d.f|0;
       b.inv=(f&1)?1:0;b.cl=!!(f&2);
       if(b.st!=='out'){if(f&8)markOut(b,false);else b.st=b.st==='gone'&&b.goneT>0?'gone':'alive'}
@@ -263,10 +332,11 @@ function assignSlots(){
   if(NET.host)applyChestSetting(); // 宝箱はホストが決める（ゲストは届くまで隠す）
   else{for(const c of chests){c.on=false;c.g.visible=false;c.t=1e12;c.pend=false}}
   if(!NET.host&&NET.chestList)applyChests(NET.chestList);
-  if(NET.host){const act=chests.slice(0,chestN());for(let i=0;i<act.length;i+=8)netAll({k:'chests',from:i,list:act.slice(i,i+8).map(chestData)})}
+  if(NET.host)hostSendChests();
   renderLog();
 }
 const chestData=c=>({x:c.x,z:c.z,y:c.y,on:c.on,item:c.item});
+function hostSendChests(){const act=chests.slice(0,chestN());for(let i=0;i<act.length;i+=8)netAll({k:'chests',from:i,list:act.slice(i,i+8).map(chestData)})}
 function applyChest(i,d){const c=chests[i];if(!c)return;if(d.x!==undefined){c.x=d.x;c.z=d.z;c.y=d.y}c.on=d.on;c.pend=false;if(d.item){c.item=d.item;paintChest(c)}c.g.visible=d.on;if(!NET.host)c.t=1e12}
 function applyChests(list){list.forEach((d,i)=>applyChest(i,d))}
 function hostTake(i,who){ // 宝箱を取れる人を1人に決めるのはホスト
@@ -283,8 +353,11 @@ function markOut(b,byMe){
   winCheck();
 }
 function remoteStep(b,dt){
-  const a=Math.min(1,dt*12);
-  b.x=wd(b.x+wd(b.tx-b.x)*a);b.z=wd(b.z+wd(b.tz-b.z)*a);b.y+=(b.ty-b.y)*a;
+  const a=Math.min(1,dt*18); // 相手の動きに素早く追いつく（以前は12）
+  // 最後の知らせが出てからの経過（サーバー時刻ベース）ぶん、進行方向へ先読みする。上限0.12秒
+  const el=(b.pts&&NET.bestRtt<1e9)?Math.max(0,Math.min(0.12,(netNow()-b.pts)/1000)):0;
+  const tx=b.tx+(b.vx||0)*el,tz=b.tz+(b.vz||0)*el;
+  b.x=wd(b.x+wd(tx-b.x)*a);b.z=wd(b.z+wd(tz-b.z)*a);b.y+=(b.ty-b.y)*a;
   let dy=b.tyaw-b.yaw;dy-=Math.round(dy/6.2832)*6.2832;b.yaw+=dy*a;
   b.g.rotation.y=b.yaw;b.g.visible=b.st==='alive'&&!b.cl;
   if(b.goneT>0)b.goneT-=dt;
@@ -907,14 +980,15 @@ const SND={
 };
 const VOL={hover1:0.3,hover3:0.3,click1:0.7,click2:0.7,shattering1:0.8,shattering2:0.8,shattering3:0.8,lazer1:0.6,lazer2:0.6,powerup1:0.8,warp1:0.6,step1:0.25,explosion1:0.7,correct1:0.9,get1:0.75,wrong1:0.7};
 let BGMV=0.5,SEV=0.75;try{const a=parseFloat(localStorage.getItem('nh_bgmv'));if(a>=0&&a<=1)BGMV=a;const b=parseFloat(localStorage.getItem('nh_sev'));if(b>=0&&b<=1)SEV=b}catch(e){}
-const BGMK={bgm1:0.4,bgm2:0.3}; // 曲ごとの基準音量（ホーム=0.4、バトル=0.3）
+const VOL_SCALE=0.6; // 音量を全体的に下げる目盛り（1＝以前と同じ。小さくするほど、効果音もBGMも静かになる）
+const BGMK={bgm1:0.4*VOL_SCALE,bgm2:0.3*VOL_SCALE}; // 曲ごとの基準音量（ホーム=0.4、バトル=0.3）
 const bgmEls={};let bgmWant=null; // BGMは別ファイル（bgm1.mp3＝ホーム、bgm2.mp3＝バトル）をループ再生。ブラウザの制限で、最初のクリックまでは鳴らない
 const bgmEl=k=>bgmEls[k]||(bgmEls[k]=Object.assign(new Audio('bgm/'+k+'.mp3'),{loop:true,preload:'none',volume:BGMV*BGMK[k]}));
 function bgmApply(){for(const k of['bgm1','bgm2']){const e=bgmEls[k]||(k===bgmWant?bgmEl(k):null);if(!e)continue;
   if(k===bgmWant){e.volume=BGMV*BGMK[k];if(e.paused){const r=e.play();if(r&&r.catch)r.catch(()=>{})}}else if(!e.paused)e.pause()}}
 function bgmSet(k){if(bgmWant===k)return;bgmWant=k;if(k==='bgm2'){try{bgmEl(k).currentTime=0}catch(x){}}bgmApply()}
 function setBGMV(v){BGMV=v;try{localStorage.setItem('nh_bgmv',v)}catch(e){}for(const k in bgmEls)bgmEls[k].volume=v*BGMK[k]}
-function setSEV(v){SEV=v;try{localStorage.setItem('nh_sev',v)}catch(e){}if(master)master.gain.value=0.7*v}
+function setSEV(v){SEV=v;try{localStorage.setItem('nh_sev',v)}catch(e){}if(master)master.gain.value=0.7*VOL_SCALE*v}
 addEventListener('pointerdown',bgmApply,true);addEventListener('keydown',bgmApply,true);
 let ac=null,master=null,bt=0;const sbuf={};
 const seLive=new Map(); // 鳴っている最中の音（決着の瞬間に止めるため）
@@ -924,7 +998,7 @@ function initAudio(){
   if(ac){if(ac.state==='suspended')ac.resume();return}
   try{
     ac=new (window.AudioContext||window.webkitAudioContext)();
-    master=ac.createGain();master.gain.value=0.7*SEV;master.connect(ac.destination);
+    master=ac.createGain();master.gain.value=0.7*VOL_SCALE*SEV;master.connect(ac.destination);
     for(const k in SND){
       const bin=atob(SND[k]),u=new Uint8Array(bin.length);
       for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
@@ -1346,7 +1420,8 @@ function botThink(b,dt){
 }
 // ===== ホーム画面・設定（マウス感度）=====
 let started=false,SENS=1;
-const SENSK=0.0016*0.3/0.7; // 以前の感度0.3相当が、新しい0.7になる目盛り（保存キーも新しくして、古い値は引き継がない）
+const SENS_SCALE=0.7; // マウス感度を全体的に下げる目盛り（1＝以前と同じ）
+const SENSK=0.0016*0.3/0.7*SENS_SCALE; // 以前の感度0.3相当が、新しい0.7になる目盛り（保存キーも新しくして、古い値は引き継がない）
 try{const v=parseFloat(localStorage.getItem('nh_sens2'));if(v>=0.1&&v<=5)SENS=v}catch(e){}
 const homeEl=document.getElementById('home'),hmain=document.getElementById('hmain'),hpanel=document.getElementById('hpanel');
 const HELP=`<span class="h3">遊び方</span><br>
@@ -1381,7 +1456,7 @@ function lobbyDraw(note){
   hpanel.dataset.k='lobby';
   const cur=NET.draft!==null&&NET.draft!==undefined?NET.draft:(NET.myNumSet||'');
   hpanel.innerHTML='<b>部屋コード</b>　<span style="font-size:34px;letter-spacing:6px;font-weight:900">'+NET.room+'</span><div style="font-size:13px;opacity:.75">このコードを友達に伝えてください（4人まで）</div>'
-   +'<div class="rw">'+mem.map(m=>'<span style="display:inline-block;margin:3px 10px 3px 0"><span style="color:'+m.color+'">●</span> '+m.name+(m.host?'（ホスト）':'')+(m.id===NET.id?'（あなた）':'')+' <span style="opacity:.8">'+(m.ready?'✓ 数字決定':'… 数字を決めています')+'</span></span>').join('')+'</div>'
+   +'<div class="rw">'+mem.map(m=>'<span style="display:inline-block;margin:3px 10px 3px 0"><span style="color:'+m.color+'">●</span> '+m.name+(m.host?'（ホスト）':'')+(m.id===NET.id?'（あなた）':'')+(m.away?'<span style="color:#d22">（つなぎ直し中）</span>':'')+' <span style="opacity:.8">'+(m.ready?'✓ 数字決定':'… 数字を決めています')+'</span></span>').join('')+'</div>'
    +'<div class="rw"><b>あなたの数字（3桁）</b>　<input type="text" id="mynum" inputmode="numeric" maxlength="3" value="'+cur+'" placeholder="000〜999" style="width:5em;text-align:center;font-size:22px;font-family:\'Courier New\',monospace;letter-spacing:3px"> <button class="tg go" id="mynumok">決定</button> <button class="tg" id="mynumrnd">ランダム</button></div>'
    +'<div style="font-size:13px;min-height:1.4em;'+(note?'color:#d22':'opacity:.8')+'">'+(note||(NET.myNumSet?'決定済み：'+NET.myNumSet+'（変えたいときは、入力して「決定」）':'この数字が、あなたの背中に出ます。ほかの人に暴かれないように決めてください'))+'</div>'
    +'<div style="font-size:13px;opacity:.8">'+cfgText(c)+'</div>'
@@ -1630,7 +1705,7 @@ function loop(t){
   for(const m of bm){m.position.x=p.x+wd(m.userData.bx-p.x);m.position.z=p.z+wd(m.userData.bz-p.z)}
   for(const b of bots)b.g.position.set(p.x+wd(b.x-p.x),b.y||0,p.z+wd(b.z-p.z));
   for(const k in NET.ghosts){const o=NET.ghosts[k],a=Math.min(1,dt*12);o.x=wd(o.x+wd(o.tx-o.x)*a);o.z=wd(o.z+wd(o.tz-o.z)*a);o.y+=(o.ty-o.y)*a;let dy=o.tyaw-o.yaw;dy-=Math.round(dy/6.2832)*6.2832;o.yaw+=dy*a;o.g.position.set(p.x+wd(o.x-p.x),o.y,p.z+wd(o.z-p.z));o.g.rotation.y=o.yaw+Math.PI}
-  if(online&&NET.on){NET.tq-=dt;if(NET.tq<=0){NET.tq=0.066;netSend({t:'pos',x:+p.x.toFixed(2),z:+p.z.toFixed(2),y:+p.y.toFixed(2),yaw:+p.yaw.toFixed(3),f:(p.inv>0?1:0)|(p.cloak>0?2:0)|(over?8:0)})}}
+  if(online&&NET.on){NET.tq-=dt;if(NET.tq<=0){NET.tq=0.033;netSend({t:'pos',x:+p.x.toFixed(2),z:+p.z.toFixed(2),y:+p.y.toFixed(2),yaw:+p.yaw.toFixed(3),f:(p.inv>0?1:0)|(p.cloak>0?2:0)|(over?8:0)})}}
   for(const c of chests)c.g.position.set(p.x+wd(c.x-p.x),c.y+Math.sin(Date.now()/300+c.x)*0.12,p.z+wd(c.z-p.z));
   for(const w of warps){w.g.position.set(p.x+wd(w.x-p.x),w.y,p.z+wd(w.z-p.z));w.g.children[0].scale.setScalar(1+Math.sin(Date.now()/250)*0.08)}
   drawMini();
